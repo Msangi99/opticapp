@@ -28,9 +28,9 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = await getStoredUser();
       final role = user?['role'] as String?;
       if (role == 'admin') {
-        Navigator.pushReplacementNamed(context, '/admin/add-product');
+        Navigator.pushReplacementNamed(context, '/admin/dashboard');
       } else if (role == 'agent') {
-        Navigator.pushReplacementNamed(context, '/agent/sell');
+        Navigator.pushReplacementNamed(context, '/agent/dashboard');
       } else {
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -72,14 +72,28 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 24),
-                      Text(
-                        'Optic',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.primary,
-                              letterSpacing: -0.5,
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'OpticEdge',
+                              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Theme.of(context).colorScheme.primary,
+                                    letterSpacing: -0.5,
+                                  ),
                             ),
+                            TextSpan(
+                              text: 'Africa',
+                              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black,
+                                    letterSpacing: -0.5,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(

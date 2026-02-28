@@ -194,9 +194,36 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       width: double.infinity,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: MobileScanner(
-                          controller: _scannerController,
-                          onDetect: _onScanResult,
+                        clipBehavior: Clip.hardEdge,
+                        child: ClipRect(
+                          clipBehavior: Clip.hardEdge,
+                          child: SizedBox(
+                            height: _scannerStripHeight,
+                            width: double.infinity,
+                            child: MobileScanner(
+                              controller: _scannerController,
+                              onDetect: _onScanResult,
+                              errorBuilder: (context, error, child) {
+                                return Container(
+                                  height: _scannerStripHeight,
+                                  width: double.infinity,
+                                  color: Colors.red.shade50,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  child: Center(
+                                    child: Text(
+                                      'Camera error',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.red.shade700,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         ),
                       ),
                     ),

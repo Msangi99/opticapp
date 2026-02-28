@@ -1,0 +1,65 @@
+---
+alwaysApply: true
+description: Project architecture and API integration guide for OpticEdge and OpticApp
+---
+
+# OpticEdge & OpticApp Project Architecture
+
+This workspace contains two interdependent projects:
+
+## 1. OpticEdge (Laravel Backend)
+**Location:** `C:\wamp64\www\opticedge`
+- **Framework:** Laravel 11 with Laravel Sanctum for API authentication
+- **Purpose:** Web application and REST API provider
+- **Key Files:**
+  - API routes: [routes/api.php](mdc:C:\wamp64\www\opticedge\routes\api.php)
+  - Controllers: `app/Http/Controllers/Api/`
+  - Models: `app/Models/`
+  - Web interface uses Livewire
+
+### API Endpoints Structure:
+- **Authentication:** `POST /api/login`
+- **Admin Routes** (requires `auth:sanctum` + `admin` middleware):
+  - `GET /api/admin/stocks` - List stocks
+  - `POST /api/admin/stocks` - Create stock
+  - `GET /api/admin/stocks/under-limit` - Stocks under limit
+  - `GET /api/admin/stocks/{id}/models` - Models for stock
+  - `GET /api/admin/purchases` - List purchases
+  - `GET /api/admin/categories` - List categories
+  - `POST /api/admin/product-list` - Add product to product list
+- **Agent Routes** (requires `auth:sanctum` + `agent` middleware):
+  - `GET /api/agent/product-list/by-imei/{imei}` - Get device by IMEI
+  - `POST /api/agent/sell` - Record sale
+
+## 2. OpticApp (Flutter Mobile App)
+**Location:** `C:\flutter\opticapp`
+- **Framework:** Flutter/Dart
+- **Purpose:** Mobile application consuming the Laravel API
+- **Key Files:**
+  - API client: [lib/api/client.dart](mdc:lib/api/client.dart)
+  - Auth API: [lib/api/auth_api.dart](mdc:lib/api/auth_api.dart)
+  - Product API: [lib/api/product_list_api.dart](mdc:lib/api/product_list_api.dart)
+  - Stocks API: [lib/api/stocks_api.dart](mdc:lib/api/stocks_api.dart)
+  - Categories API: [lib/api/categories_api.dart](mdc:lib/api/categories_api.dart)
+
+### API Configuration:
+- **Base URL:** Currently set to `https://opticedgeafrica.net/api` in [lib/api/client.dart](mdc:lib/api/client.dart)
+- **Authentication:** Bearer token (stored in SharedPreferences)
+- **Token Management:** Functions in `client.dart` handle token storage/retrieval
+
+### API Client Functions:
+- `apiGet(path, {token})` - GET requests with Bearer token
+- `apiPost(path, body, {token})` - POST requests with Bearer token
+- `getStoredToken()` - Retrieve stored authentication token
+- `setStoredToken(token)` - Store authentication token
+- `clearStoredAuth()` - Clear authentication data
+- `getStoredUser()` / `setStoredUser(user)` - User data management
+
+## Integration Notes:
+- The Flutter app depends on the Laravel API backend
+- All API requests use Bearer token authentication via Laravel Sanctum
+- Token is stored in SharedPreferences and automatically included in API requests
+- When adding new API endpoints, update both:
+  1. Laravel routes in `routes/api.php`
+  2. Flutter API client files in `lib/api/`
+- For local development, update `baseUrl` in `client.dart` to point to local Laravel instance

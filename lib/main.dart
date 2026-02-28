@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'api/client.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
+import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/stocks_screen.dart';
 import 'screens/admin/purchase_detail_screen.dart';
 import 'screens/admin/add_product_screen.dart';
+import 'screens/agent/agent_dashboard_screen.dart';
 import 'screens/agent/sell_screen.dart';
 
 void main() {
@@ -22,9 +24,11 @@ class OpticApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/admin/dashboard': (context) => const AdminDashboardScreen(),
         '/admin/stocks': (context) => const StocksScreen(),
         '/admin/stocks/purchase': (context) => const PurchaseDetailScreen(),
         '/admin/add-product': (context) => const AddProductScreen(),
+        '/agent/dashboard': (context) => const AgentDashboardScreen(),
         '/agent/sell': (context) => const SellScreen(),
         '/home': (context) => const _PlaceholderHome(),
       },
@@ -55,11 +59,11 @@ class _AuthCheckerState extends State<_AuthChecker> {
     if (token != null && user != null) {
       final role = user['role'] as String?;
       if (role == 'admin') {
-        Navigator.pushReplacementNamed(context, '/admin/stocks');
+        Navigator.pushReplacementNamed(context, '/admin/dashboard');
         return;
       }
       if (role == 'agent') {
-        Navigator.pushReplacementNamed(context, '/agent/sell');
+        Navigator.pushReplacementNamed(context, '/agent/dashboard');
         return;
       }
     }

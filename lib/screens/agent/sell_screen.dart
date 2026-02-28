@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/client.dart';
 import '../../api/product_list_api.dart';
+import '../../api/agent_dashboard_api.dart';
 import '../../theme/app_theme.dart';
 
 /// Approximate height of 1 cm in logical pixels (device-independent).
@@ -16,10 +17,13 @@ class SellScreen extends StatefulWidget {
 
 class _SellScreenState extends State<SellScreen> {
   Map<String, dynamic>? _device;
+  List<Map<String, dynamic>> _availableProducts = [];
+  int? _selectedProductId;
   String? _error;
   final _customerController = TextEditingController();
   final _priceController = TextEditingController();
   bool _selling = false;
+  bool _loadingProducts = false;
   final MobileScannerController _scannerController = MobileScannerController(
     detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
@@ -31,6 +35,62 @@ class _SellScreenState extends State<SellScreen> {
   void initState() {
     super.initState();
     _priceController.addListener(() => setState(() {}));
+    _loadAvailableProducts();
+  }
+
+  Future<void> _loadAvailableProducts() async {
+    setState(() {
+      _loadingProducts = true;
+    });
+    try {
+      final products = await getAvailableProducts();
+      if (!mounted) return;
+      setState(() {
+        _availableProducts = products.isNotEmpty ? products : <Map<String, dynamic>>[];
+        _loadingProducts = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _availableProducts = <Map<String, dynamic>>[];
+        _loadingProducts = false;
+        // Don't show error, just continue without dropdown
+      });
+    }
+  }
+
+  void _onProductSelected(int? productId) {
+    if (productId == null) {
+      setState(() {
+        _selectedProductId = null;
+        _device = null;
+        _priceController.clear();
+      });
+      return;
+    }
+    if (_availableProducts.isEmpty) return;
+    try {
+      final product = _availableProducts.firstWhere(
+        (p) => p['id'] == productId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (product.isNotEmpty && product['id'] != null) {
+        setState(() {
+          _selectedProductId = productId;
+          _device = product;
+          _error = null;
+          final sellPrice = product['sell_price'];
+          if (sellPrice != null) {
+            final n = sellPrice is num ? sellPrice : (double.tryParse(sellPrice.toString()) ?? 0.0);
+            _priceController.text = n == n.roundToDouble() ? n.toInt().toString() : n.toStringAsFixed(2);
+          } else {
+            _priceController.text = '';
+          }
+        });
+      }
+    } catch (e) {
+      // Product not found, do nothing
+    }
   }
 
   /// Scan barcode → use the scanned code as IMEI number (look up device).
@@ -53,6 +113,7 @@ class _SellScreenState extends State<SellScreen> {
   Future<void> _lookupImei(String imei) async {
     setState(() {
       _device = null;
+      _selectedProductId = null;
       _error = null;
     });
     try {
@@ -164,6 +225,11 @@ class _SellScreenState extends State<SellScreen> {
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: const Text('Sell'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Back to Dashboard',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout_rounded),
@@ -177,6 +243,62 @@ class _SellScreenState extends State<SellScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              'Select Product or Scan IMEI',
+              style: sectionLabelStyle(context),
+            ),
+            const SizedBox(height: 16),
+            // Product Selection Dropdown
+            if (!_loadingProducts && _availableProducts.isNotEmpty) ...[
+              Text(
+                'Select from available products:',
+                style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<int>(
+                value: _selectedProductId,
+                decoration: const InputDecoration(
+                  labelText: 'Select Product',
+                  hintText: 'Choose a product',
+                  prefixIcon: Icon(Icons.phone_android_rounded, size: 22),
+                ),
+                items: [
+                  const DropdownMenuItem<int>(
+                    value: null,
+                    child: Text('-- Select Product --'),
+                  ),
+                  ..._availableProducts.map((product) {
+                    final id = product['id'] as int?;
+                    final model = product['model'] as String? ?? '–';
+                    final imei = product['imei_number'] as String? ?? '–';
+                    return DropdownMenuItem<int>(
+                      value: id,
+                      child: Text('$model (IMEI: $imei)'),
+                    );
+                  }).toList(),
+                ],
+                onChanged: _onProductSelected,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'OR',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
             Text(
               'Scan barcode (code = IMEI)',
               style: sectionLabelStyle(context),
@@ -202,12 +324,35 @@ class _SellScreenState extends State<SellScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  height: _scannerStripHeight,
-                  width: double.infinity,
-                  child: MobileScanner(
-                    controller: _scannerController,
-                    onDetect: _onScanResult,
+                clipBehavior: Clip.hardEdge,
+                child: ClipRect(
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    height: _scannerStripHeight,
+                    width: double.infinity,
+                    child: MobileScanner(
+                      controller: _scannerController,
+                      onDetect: _onScanResult,
+                      errorBuilder: (context, error, child) {
+                        return Container(
+                          height: _scannerStripHeight,
+                          width: double.infinity,
+                          color: Colors.red.shade50,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Center(
+                            child: Text(
+                              'Camera error',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.red.shade700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
