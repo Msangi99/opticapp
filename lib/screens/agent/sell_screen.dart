@@ -87,9 +87,19 @@ class _SellScreenState extends State<SellScreen> {
             _priceController.text = '';
           }
         });
+      } else {
+        // Product no longer available, reset selection
+        setState(() {
+          _selectedProductId = null;
+          _error = 'Selected product is no longer available.';
+        });
       }
     } catch (e) {
-      // Product not found, do nothing
+      // Product not found, reset selection
+      setState(() {
+        _selectedProductId = null;
+        _error = 'Selected product is no longer available.';
+      });
     }
   }
 
@@ -188,11 +198,17 @@ class _SellScreenState extends State<SellScreen> {
           backgroundColor: successColor,
         ),
       );
+      // Remove the sold product from the available products list and refresh the list
       setState(() {
+        _availableProducts.removeWhere((product) => product['id'] == _device!['id']);
+        _selectedProductId = null;
         _device = null;
         _customerController.clear();
         _priceController.clear();
       });
+      
+      // Refresh the available products list from the backend
+      await _loadAvailableProducts();
     } catch (e) {
       if (!mounted) return;
       setState(() =>
