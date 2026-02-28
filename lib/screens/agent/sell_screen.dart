@@ -18,6 +18,8 @@ class SellScreen extends StatefulWidget {
 class _SellScreenState extends State<SellScreen> {
   Map<String, dynamic>? _device;
   List<Map<String, dynamic>> _availableProducts = [];
+  /// Product list IDs sold in this session so they never appear in the dropdown.
+  final Set<int> _soldInSessionIds = {};
   int? _selectedProductId;
   String? _error;
   final _customerController = TextEditingController();
@@ -46,7 +48,16 @@ class _SellScreenState extends State<SellScreen> {
       final products = await getAvailableProducts();
       if (!mounted) return;
       setState(() {
-        _availableProducts = products.isNotEmpty ? products : <Map<String, dynamic>>[];
+        final list = products.isNotEmpty ? products : <Map<String, dynamic>>[];
+        // Exclude any items already sold in this session (safety if API returns stale data).
+        _availableProducts = list
+            .where((p) {
+              final id = p['id'];
+              if (id == null) return true;
+              final int? idInt = id is int ? id : (id is num ? (id as num).toInt() : null);
+              return idInt == null || !_soldInSessionIds.contains(idInt);
+            })
+            .toList();
         _loadingProducts = false;
       });
     } catch (e) {
@@ -198,7 +209,8 @@ class _SellScreenState extends State<SellScreen> {
           backgroundColor: successColor,
         ),
       );
-      // Remove the sold product from the available products list and refresh the list
+      final soldId = _device!['id'] as int?;
+      if (soldId != null) _soldInSessionIds.add(soldId);
       setState(() {
         _availableProducts.removeWhere((product) => product['id'] == _device!['id']);
         _selectedProductId = null;
@@ -206,8 +218,6 @@ class _SellScreenState extends State<SellScreen> {
         _customerController.clear();
         _priceController.clear();
       });
-      
-      // Refresh the available products list from the backend
       await _loadAvailableProducts();
     } catch (e) {
       if (!mounted) return;
