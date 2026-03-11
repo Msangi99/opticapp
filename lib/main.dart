@@ -6,6 +6,18 @@ import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/stocks_screen.dart';
 import 'screens/admin/purchase_detail_screen.dart';
 import 'screens/admin/add_product_screen.dart';
+import 'screens/admin/expenses_screen.dart';
+import 'screens/admin/channels_screen.dart';
+import 'screens/admin/agent_sales_screen.dart';
+import 'screens/admin/orders_screen.dart';
+import 'screens/admin/customers_screen.dart';
+import 'screens/admin/dealers_screen.dart';
+import 'screens/admin/agents_screen.dart';
+import 'screens/admin/categories_screen.dart';
+import 'screens/admin/distribution_screen.dart';
+import 'screens/admin/pending_sales_screen.dart';
+import 'screens/admin/reports_screen.dart';
+import 'screens/admin/settings_screen.dart';
 import 'screens/agent/agent_dashboard_screen.dart';
 import 'screens/agent/sell_screen.dart';
 
@@ -28,6 +40,18 @@ class OpticApp extends StatelessWidget {
         '/admin/stocks': (context) => const StocksScreen(),
         '/admin/stocks/purchase': (context) => const PurchaseDetailScreen(),
         '/admin/add-product': (context) => const AddProductScreen(),
+        '/admin/expenses': (context) => const ExpensesScreen(),
+        '/admin/channels': (context) => const ChannelsScreen(),
+        '/admin/stock/agent-sales': (context) => const AgentSalesScreen(),
+        '/admin/categories': (context) => const CategoriesScreen(),
+        '/admin/orders': (context) => const OrdersScreen(),
+        '/admin/customers': (context) => const CustomersScreen(),
+        '/admin/dealers': (context) => const DealersScreen(),
+        '/admin/agents': (context) => const AgentsScreen(),
+        '/admin/stock/distribution': (context) => const DistributionScreen(),
+        '/admin/stock/pending-sales': (context) => const PendingSalesScreen(),
+        '/admin/reports': (context) => const ReportsScreen(),
+        '/admin/settings': (context) => const SettingsScreen(),
         '/agent/dashboard': (context) => const AgentDashboardScreen(),
         '/agent/sell': (context) => const SellScreen(),
         '/home': (context) => const _PlaceholderHome(),

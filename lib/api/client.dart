@@ -60,3 +60,16 @@ Future<http.Response> apiPost(String path, Map<String, dynamic> body, {String? t
     body: jsonEncode(body),
   );
 }
+
+Future<http.Response> apiPut(String path, Map<String, dynamic> body, {String? token}) async {
+  final t = token ?? await getStoredToken();
+  return http.put(
+    Uri.parse('$baseUrl$path'),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      if (t != null) 'Authorization': 'Bearer $t',
+    },
+    body: jsonEncode(body),
+  );
+}

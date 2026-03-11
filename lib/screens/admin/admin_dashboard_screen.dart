@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../api/client.dart';
 import '../../api/dashboard_api.dart';
 import '../../api/product_list_api.dart';
 import '../../api/agent_sales_api.dart';
 import '../../theme/app_theme.dart';
+import 'admin_scaffold.dart';
 
 /// Admin Dashboard: Overview of store performance with stats and financial metrics.
 class AdminDashboardScreen extends StatefulWidget {
@@ -65,12 +65,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await clearStoredAuth();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
   String _formatCurrency(double? value) {
     if (value == null) return '0';
     final formatter = NumberFormat('#,##0');
@@ -79,28 +73,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.inventory_2_outlined),
-            onPressed: () => Navigator.pushReplacementNamed(context, '/admin/stocks'),
-            tooltip: 'Stocks',
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_box_rounded),
-            onPressed: () => Navigator.pushNamed(context, '/admin/add-product'),
-            tooltip: 'Add Product',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: _logout,
-            tooltip: 'Log out',
-          ),
-        ],
-      ),
+    return AdminScaffold(
+      showDrawer: true,
+      title: 'Dashboard',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.add_box_rounded),
+          onPressed: () => Navigator.pushNamed(context, '/admin/add-product'),
+          tooltip: 'Add Product',
+        ),
+      ],
       body: _loading
           ? const Center(
               child: Column(
@@ -140,8 +122,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               // Stats Grid
                               _buildStatsGrid(),
                               const SizedBox(height: 24),
+                              // Sales Metrics (Today, WTD, MTD, YTD)
+                              _buildSalesMetrics(),
+                              const SizedBox(height: 24),
                               // Financial Metrics
                               _buildFinancialMetrics(),
+                              const SizedBox(height: 24),
+                              // Cash in Hand (Payment options)
+                              _buildPaymentOptions(),
+                              const SizedBox(height: 24),
+                              // Top Selling Products
+                              _buildTopProducts(),
                               const SizedBox(height: 24),
                               // Recent Orders
                               _buildRecentOrders(),
@@ -324,6 +315,232 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _FinancialCard(
+                      label: 'Total Purchase Buy Price',
+                      value: _formatCurrency((metrics['total_purchase_buy_price'] as num?)?.toDouble()),
+                      description: 'Total buy price of all purchases',
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _FinancialCard(
+                      label: 'Total Products in Purchases',
+                      value: '${metrics['total_products_in_purchases'] ?? 0}',
+                      description: 'Total products in all purchases',
+                      color: Colors.teal,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSalesMetrics() {
+    final sales = _data?['sales_metrics'] as Map<String, dynamic>?;
+    if (sales == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Sales',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Mauzo ya leo, wiki, mwezi na mwaka.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _SalesMetricCard(
+              label: 'Mauzo ya Leo',
+              value: (sales['today'] as Map<String, dynamic>?)?['sales'] as num?,
+              sub: (sales['today'] as Map<String, dynamic>?)?['percentage_change'] != null ? 'vs jana' : null,
+              pct: (sales['today'] as Map<String, dynamic>?)?['percentage_change'] as num?,
+              isIncrease: (sales['today'] as Map<String, dynamic>?)?['is_increase'] as bool? ?? true,
+              color: Colors.blue,
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: _SalesMetricCard(
+              label: 'WTD',
+              value: (sales['wtd'] as Map<String, dynamic>?)?['sales'] as num?,
+              sub: (sales['wtd'] as Map<String, dynamic>?)?['percentage_change'] != null ? 'vs wiki iliyopita' : null,
+              pct: (sales['wtd'] as Map<String, dynamic>?)?['percentage_change'] as num?,
+              isIncrease: (sales['wtd'] as Map<String, dynamic>?)?['is_increase'] as bool? ?? true,
+              color: Colors.purple,
+            )),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _SalesMetricCard(
+              label: 'MTD',
+              value: (sales['mtd'] as Map<String, dynamic>?)?['sales'] as num?,
+              sub: (sales['mtd'] as Map<String, dynamic>?)?['percentage_change'] != null ? 'vs mwezi uliopita' : null,
+              pct: (sales['mtd'] as Map<String, dynamic>?)?['percentage_change'] as num?,
+              isIncrease: (sales['mtd'] as Map<String, dynamic>?)?['is_increase'] as bool? ?? true,
+              color: Colors.green,
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: _SalesMetricCard(
+              label: 'YTD',
+              value: (sales['ytd'] as Map<String, dynamic>?)?['sales'] as num?,
+              sub: (sales['ytd'] as Map<String, dynamic>?)?['percentage_change'] != null ? 'vs mwaka uliopita' : null,
+              pct: (sales['ytd'] as Map<String, dynamic>?)?['percentage_change'] as num?,
+              isIncrease: (sales['ytd'] as Map<String, dynamic>?)?['is_increase'] as bool? ?? true,
+              color: Colors.amber,
+            )),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentOptions() {
+    final options = _data?['payment_options'];
+    final list = options is List ? List<dynamic>.from(options) : <dynamic>[];
+    if (list.isEmpty) return const SizedBox.shrink();
+    double total = 0;
+    for (final o in list) {
+      if (o is Map && o['balance'] != null) total += (o['balance'] as num).toDouble();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Cash in Hand',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Payment options and their current balances',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 16),
+        ...list.map<Widget>((o) {
+          final opt = o as Map<String, dynamic>;
+          final name = opt['name'] as String? ?? '–';
+          final type = opt['type'] as String? ?? '';
+          final balance = (opt['balance'] as num?)?.toDouble() ?? 0.0;
+          final opening = (opt['opening_balance'] as num?)?.toDouble() ?? 0.0;
+          final diff = balance - opening;
+          final pct = opening != 0 ? (diff / opening) * 100 : 0.0;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: sectionCardDecoration(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (type == 'mobile' ? Colors.blue : type == 'bank' ? Colors.green : Colors.amber).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(type.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: type == 'mobile' ? Colors.blue.shade700 : type == 'bank' ? Colors.green.shade700 : Colors.amber.shade700)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(_formatCurrency(balance), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text('Opening: ${_formatCurrency(opening)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                if (diff != 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        Icon(diff > 0 ? Icons.trending_up : Icons.trending_down, size: 14, color: diff > 0 ? Colors.green : Colors.red),
+                        const SizedBox(width: 4),
+                        Text('${diff > 0 ? '+' : ''}${NumberFormat('#,##0').format(diff)} TZS (${NumberFormat('0.0').format(pct)}%)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: diff > 0 ? Colors.green.shade700 : Colors.red.shade700)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: sectionCardDecoration(context),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Total Cash in Hand', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              Text(_formatCurrency(total), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopProducts() {
+    final top = _data?['top_products'];
+    final list = top is List ? List<dynamic>.from(top) : <dynamic>[];
+    if (list.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Top Selling Products (Models)',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Products sold by quantity',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          decoration: sectionCardDecoration(context),
+          child: Column(
+            children: [
+              for (int i = 0; i < list.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(6)),
+                        child: Text('${i + 1}', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          (list[i] as Map<String, dynamic>)['model'] as String? ?? '–',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Text(
+                        '${(list[i] as Map<String, dynamic>)['total_quantity'] ?? 0} sold',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -351,9 +568,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             if (recentOrders.isNotEmpty)
               TextButton(
-                onPressed: () {
-                  // TODO: Navigate to orders list
-                },
+                onPressed: () => Navigator.pushNamed(context, '/admin/orders'),
                 child: const Text('View All'),
               ),
           ],
@@ -748,6 +963,62 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } catch (_) {
       return dateString;
     }
+  }
+}
+
+class _SalesMetricCard extends StatelessWidget {
+  final String label;
+  final num? value;
+  final String? sub;
+  final num? pct;
+  final bool isIncrease;
+  final Color color;
+
+  const _SalesMetricCard({
+    required this.label,
+    required this.value,
+    this.sub,
+    this.pct,
+    required this.isIncrease,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final formatter = NumberFormat('#,##0');
+    final valueStr = value != null ? '${formatter.format(value)} TZS' : '0 TZS';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: sectionCardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+            child: Icon(Icons.sell_rounded, color: color, size: 22),
+          ),
+          const SizedBox(height: 12),
+          Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 4),
+          Text(valueStr, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          if (sub != null && pct != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(isIncrease ? Icons.trending_up : Icons.trending_down, size: 14, color: isIncrease ? Colors.green : Colors.red),
+                const SizedBox(width: 4),
+                Text('${NumberFormat('0.0').format((pct ?? 0).abs())}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isIncrease ? Colors.green.shade700 : Colors.red.shade700)),
+                const SizedBox(width: 4),
+                Text(sub!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+              ],
+            ),
+          ],
+          if (sub != null && pct == null)
+            Text(sub!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+        ],
+      ),
+    );
   }
 }
 

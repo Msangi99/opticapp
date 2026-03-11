@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../api/client.dart';
 import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
+import 'admin_scaffold.dart';
 
 /// Stocks page: list of purchases (name, limit, available, status). Tap name → purchase detail.
 class StocksScreen extends StatefulWidget {
@@ -43,35 +43,16 @@ class _StocksScreenState extends State<StocksScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await clearStoredAuth();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Stocks'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/admin/dashboard'),
-          tooltip: 'Back to Dashboard',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_box_rounded),
-            onPressed: () => Navigator.pushReplacementNamed(context, '/admin/add-product'),
-            tooltip: 'Add Product',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: _logout,
-            tooltip: 'Log out',
-          ),
-        ],
+    return AdminScaffold(
+      title: 'Stocks',
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.pushNamed(context, '/admin/add-product'),
+        icon: const Icon(Icons.add_box_rounded, color: Colors.black),
+        label: const Text('Add Product', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
+        backgroundColor: const Color(0xFFFA8900),
+        foregroundColor: Colors.black,
       ),
       body: _loading
           ? const Center(

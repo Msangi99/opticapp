@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
+import 'admin_scaffold.dart';
 
 /// Detail page for one purchase: list of model, category, IMEI.
 class PurchaseDetailScreen extends StatefulWidget {
@@ -72,14 +73,12 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: Text(_purchaseName),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
+    return AdminScaffold(
+      title: _purchaseName,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded),
+        onPressed: () => Navigator.pop(context),
+        tooltip: 'Back',
       ),
       body: _loading
           ? const Center(

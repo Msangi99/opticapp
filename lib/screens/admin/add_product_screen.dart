@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../../api/client.dart';
 import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
+import 'admin_scaffold.dart';
 
 /// Scanner strip height ~1 cm, full width.
 const double _scannerStripHeight = 40.0;
@@ -126,12 +126,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await clearStoredAuth();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
   @override
   void dispose() {
     _imeiController.dispose();
@@ -141,23 +135,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Add Product'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/admin/stocks'),
-          tooltip: 'Back to Stocks',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: _logout,
-            tooltip: 'Log out',
-          ),
-        ],
-      ),
+    return AdminScaffold(
+      title: 'Add Product',
       body: _loading
           ? const Center(
               child: Column(

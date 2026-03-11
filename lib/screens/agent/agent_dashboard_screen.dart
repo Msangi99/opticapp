@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../api/client.dart';
 import '../../api/agent_dashboard_api.dart';
 import '../../theme/app_theme.dart';
+import 'agent_scaffold.dart';
 
 /// Agent Dashboard: Overview of assignments, stats, and recent sales.
 class AgentDashboardScreen extends StatefulWidget {
@@ -44,12 +44,6 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await clearStoredAuth();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
   String _formatCurrency(double? value) {
     if (value == null) return '0';
     final formatter = NumberFormat('#,##0');
@@ -68,23 +62,15 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.sell_rounded),
-            onPressed: () => Navigator.pushNamed(context, '/agent/sell'),
-            tooltip: 'Sell Product',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: _logout,
-            tooltip: 'Log out',
-          ),
-        ],
+    return AgentScaffold(
+      title: 'Dashboard',
+      showDrawer: true,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.pushNamed(context, '/agent/sell'),
+        icon: const Icon(Icons.sell_rounded),
+        label: const Text('Record Sale'),
+        backgroundColor: const Color(0xFF232F3E),
+        foregroundColor: Colors.white,
       ),
       body: _loading
           ? const Center(
@@ -122,14 +108,19 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Stats Grid
+                              Text(
+                                'Products assigned to you. Record a sale when you sell to a customer.',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                              const SizedBox(height: 20),
                               _buildStatsGrid(),
                               const SizedBox(height: 24),
-                              // Assignments
                               _buildAssignments(),
                               const SizedBox(height: 24),
-                              // Recent Sales
                               _buildRecentSales(),
+                              const SizedBox(height: 80),
                             ],
                           ),
                         ),
@@ -238,6 +229,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                         ),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          onTap: remaining > 0
+                              ? () => Navigator.pushNamed(context, '/agent/sell')
+                              : null,
                           leading: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
@@ -269,7 +263,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                                     color: Theme.of(context).colorScheme.primary,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Text(
+                                  child: const Text(
                                     'Available',
                                     style: TextStyle(
                                       fontSize: 11,

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../../api/client.dart';
 import '../../api/product_list_api.dart';
 import '../../api/agent_dashboard_api.dart';
 import '../../theme/app_theme.dart';
+import 'agent_scaffold.dart';
 
 /// Approximate height of 1 cm in logical pixels (device-independent).
 const double _scannerStripHeight = 40.0;
@@ -54,7 +54,7 @@ class _SellScreenState extends State<SellScreen> {
             .where((p) {
               final id = p['id'];
               if (id == null) return true;
-              final int? idInt = id is int ? id : (id is num ? (id as num).toInt() : null);
+              final int? idInt = id is int ? id : (id is num ? id.toInt() : null);
               return idInt == null || !_soldInSessionIds.contains(idInt);
             })
             .toList();
@@ -228,12 +228,6 @@ class _SellScreenState extends State<SellScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await clearStoredAuth();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
   @override
   void dispose() {
     _customerController.dispose();
@@ -247,23 +241,9 @@ class _SellScreenState extends State<SellScreen> {
     final total = _totalAmount;
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Sell'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.pop(context),
-          tooltip: 'Back to Dashboard',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: _logout,
-            tooltip: 'Log out',
-          ),
-        ],
-      ),
+    return AgentScaffold(
+      title: 'Record Sale',
+      showDrawer: false,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
