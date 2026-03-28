@@ -45,6 +45,22 @@ Future<Map<String, dynamic>> addProductToListByPurchase({
   return data['data'] as Map<String, dynamic>;
 }
 
+/// Add many IMEIs for one purchase (from barcode photos, etc.).
+Future<Map<String, dynamic>> addProductBatchByPurchase({
+  required int purchaseId,
+  required List<String> imeiNumbers,
+}) async {
+  final res = await apiPost('/admin/product-list/batch', {
+    'purchase_id': purchaseId,
+    'imei_numbers': imeiNumbers,
+  });
+  final data = jsonDecode(res.body) as Map<String, dynamic>;
+  if (res.statusCode != 201 && res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Failed to add products');
+  }
+  return data;
+}
+
 Future<Map<String, dynamic>> addProductToList({
   required int stockId,
   required int categoryId,
@@ -82,5 +98,44 @@ Future<Map<String, dynamic>> sellDevice({
   });
   final data = jsonDecode(res.body) as Map<String, dynamic>;
   if (res.statusCode != 201) throw Exception(data['message']?.toString() ?? 'Sale failed');
+  return data['data'] as Map<String, dynamic>;
+}
+
+/// Credit / installment sale (full amount on credit; optional down payment).
+Future<Map<String, dynamic>> sellDeviceCredit({
+  required int productListId,
+  required String customerName,
+  required double sellingPrice,
+  double downPayment = 0,
+  int? paymentOptionId,
+  int? installmentCount,
+  double? installmentAmount,
+  int? installmentIntervalDays,
+  String? firstDueDate,
+  String? installmentNotes,
+}) async {
+  final body = <String, dynamic>{
+    'product_list_id': productListId,
+    'customer_name': customerName,
+    'selling_price': sellingPrice,
+    'down_payment': downPayment,
+  };
+  if (paymentOptionId != null) body['payment_option_id'] = paymentOptionId;
+  if (installmentCount != null) body['installment_count'] = installmentCount;
+  if (installmentAmount != null) body['installment_amount'] = installmentAmount;
+  if (installmentIntervalDays != null) {
+    body['installment_interval_days'] = installmentIntervalDays;
+  }
+  if (firstDueDate != null && firstDueDate.isNotEmpty) {
+    body['first_due_date'] = firstDueDate;
+  }
+  if (installmentNotes != null && installmentNotes.isNotEmpty) {
+    body['installment_notes'] = installmentNotes;
+  }
+  final res = await apiPost('/agent/sell-credit', body);
+  final data = jsonDecode(res.body) as Map<String, dynamic>;
+  if (res.statusCode != 201) {
+    throw Exception(data['message']?.toString() ?? 'Credit sale failed');
+  }
   return data['data'] as Map<String, dynamic>;
 }

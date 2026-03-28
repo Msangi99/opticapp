@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
-
-/// Scanner strip height ~1 cm, full width.
-const double _scannerStripHeight = 40.0;
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -21,17 +19,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
   int? _selectedPurchaseId;
   final _imeiController = TextEditingController();
   bool _saving = false;
-  final MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
-    facing: CameraFacing.back,
-    torchEnabled: false,
-  );
-  DateTime? _lastScanTime;
-  static const _scanCooldown = Duration(seconds: 2);
+  bool _decoding = false;
+  final ImagePicker _picker = ImagePicker();
+  late final MobileScannerController _decodeController;
 
   @override
   void initState() {
     super.initState();
+    _decodeController = MobileScannerController(autoStart: false);
     _load();
   }
 
@@ -67,25 +62,75 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return null;
   }
 
-  /// Scan barcode → use the scanned code as IMEI number (fill IMEI field).
-  void _onScanResult(BarcodeCapture capture) {
-    if (!mounted) return;
-    final now = DateTime.now();
-    if (_lastScanTime != null && now.difference(_lastScanTime!) < _scanCooldown) {
-      return;
+  Set<String> _imeisFromField() {
+    final lines = _imeiController.text.split(RegExp(r'[\r\n,;\t]+'));
+    final out = <String>{};
+    for (final line in lines) {
+      final t = line.trim();
+      if (t.isNotEmpty) out.add(t);
     }
-    for (final barcode in capture.barcodes) {
-      final code = barcode.rawValue ?? barcode.displayValue;
-      if (code != null && code.trim().isNotEmpty) {
-        _lastScanTime = now;
-        final imei = code.trim();
-        setState(() {
-          _imeiController.text = imei;
-          _error = null;
-        });
-        return;
+    return out;
+  }
+
+  void _syncFieldFromSet(Set<String> codes) {
+    final sorted = codes.toList()..sort();
+    _imeiController.text = sorted.join('\n');
+  }
+
+  Future<Set<String>> _barcodesFromFilePath(String path) async {
+    final found = <String>{};
+    try {
+      final dynamic raw = await _decodeController.analyzeImage(path);
+      if (raw is BarcodeCapture) {
+        for (final b in raw.barcodes) {
+          final c = b.rawValue ?? b.displayValue;
+          if (c != null && c.trim().isNotEmpty) found.add(c.trim());
+        }
       }
+    } catch (_) {
+      /* no code in image */
     }
+    return found;
+  }
+
+  Future<void> _decodePaths(List<String> paths) async {
+    if (paths.isEmpty) return;
+    setState(() {
+      _decoding = true;
+      _error = null;
+    });
+    final merged = _imeisFromField();
+    try {
+      for (final p in paths) {
+        merged.addAll(await _barcodesFromFilePath(p));
+      }
+      if (!mounted) return;
+      setState(() {
+        _syncFieldFromSet(merged);
+        _decoding = false;
+        if (merged.isEmpty) {
+          _error = 'No barcode found in the selected photo(s). Try another angle or type IMEIs manually.';
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _decoding = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  Future<void> _pickFromCamera() async {
+    final x = await _picker.pickImage(source: ImageSource.camera, imageQuality: 88);
+    if (x == null) return;
+    await _decodePaths([x.path]);
+  }
+
+  Future<void> _pickFromGallery() async {
+    final list = await _picker.pickMultiImage(imageQuality: 88);
+    if (list.isEmpty) return;
+    await _decodePaths(list.map((e) => e.path).toList());
   }
 
   Future<void> _save() async {
@@ -93,9 +138,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() => _error = 'Select a purchase.');
       return;
     }
-    final imei = _imeiController.text.trim();
-    if (imei.isEmpty) {
-      setState(() => _error = 'Enter or scan IMEI.');
+    final imeis = _imeisFromField().toList();
+    if (imeis.isEmpty) {
+      setState(() => _error = 'Add at least one IMEI from photos or typing.');
       return;
     }
     setState(() {
@@ -103,14 +148,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _saving = true;
     });
     try {
-      await addProductToListByPurchase(
+      final result = await addProductBatchByPurchase(
         purchaseId: _selectedPurchaseId!,
-        imeiNumber: imei,
+        imeiNumbers: imeis,
       );
       if (!mounted) return;
+      final data = result['data'] as Map<String, dynamic>?;
+      final created = (data?['created'] as List?) ?? [];
+      final failed = (data?['failed'] as List?) ?? [];
+      final msg = StringBuffer('Added ${created.length} product(s).');
+      if (failed.isNotEmpty) {
+        msg.write(' ${failed.length} skipped.');
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Product added.'),
+          content: Text(msg.toString()),
           behavior: SnackBarBehavior.floating,
           backgroundColor: successColor,
         ),
@@ -129,7 +181,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   void dispose() {
     _imeiController.dispose();
-    _scannerController.dispose();
+    _decodeController.dispose();
     super.dispose();
   }
 
@@ -157,55 +209,47 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Scan barcode (code = IMEI)',
+                      'Barcode from camera or gallery',
                       style: sectionLabelStyle(context),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Point camera at barcode. The scanned code is used as the IMEI number.',
+                      'Take a photo or choose one or more pictures of labels. All detected codes are added as IMEIs. You can edit the list below before saving.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: _scannerStripHeight,
-                      width: double.infinity,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        clipBehavior: Clip.hardEdge,
-                        child: ClipRect(
-                          clipBehavior: Clip.hardEdge,
-                          child: SizedBox(
-                            height: _scannerStripHeight,
-                            width: double.infinity,
-                            child: MobileScanner(
-                              controller: _scannerController,
-                              onDetect: _onScanResult,
-                              errorBuilder: (context, error, child) {
-                                return Container(
-                                  height: _scannerStripHeight,
-                                  width: double.infinity,
-                                  color: Colors.red.shade50,
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  child: Center(
-                                    child: Text(
-                                      'Camera error',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.red.shade700,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _decoding ? null : _pickFromCamera,
+                            icon: const Icon(Icons.photo_camera_outlined),
+                            label: const Text('Camera'),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _decoding ? null : _pickFromGallery,
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Gallery'),
+                          ),
+                        ),
+                      ],
                     ),
+                    if (_decoding) ...[
+                      const SizedBox(height: 12),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Reading barcodes…',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
                     const SizedBox(height: 20),
                     if (_error != null) ...[
                       Container(
@@ -281,14 +325,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          Text('IMEI', style: sectionLabelStyle(context)),
+                          Text('IMEI list (one per line)', style: sectionLabelStyle(context)),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _imeiController,
+                            maxLines: 8,
                             decoration: const InputDecoration(
-                              hintText: 'From scan above or type manually',
+                              hintText: 'From photos above or type / paste',
                               border: OutlineInputBorder(),
                               isDense: true,
+                              alignLabelWithHint: true,
                               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             ),
                           ),
@@ -297,7 +343,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                     const SizedBox(height: 24),
                     FilledButton(
-                      onPressed: _saving ? null : _save,
+                      onPressed: (_saving || _decoding) ? null : _save,
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(52),
                       ),
@@ -310,7 +356,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Save'),
+                          : const Text('Save all'),
                     ),
                   ],
                 ),

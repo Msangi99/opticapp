@@ -113,6 +113,21 @@ class _AgentDrawer extends StatelessWidget {
                 Navigator.pushNamed(context, '/agent/sell');
               },
             ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _kBrandDark.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.credit_score_rounded, size: 20, color: _kBrandDark),
+              ),
+              title: const Text('Credit', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _kBrandDark)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/agent/credits');
+              },
+            ),
             const Spacer(),
             const Divider(height: 1),
             ListTile(

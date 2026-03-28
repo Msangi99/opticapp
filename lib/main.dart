@@ -20,6 +20,7 @@ import 'screens/admin/reports_screen.dart';
 import 'screens/admin/settings_screen.dart';
 import 'screens/agent/agent_dashboard_screen.dart';
 import 'screens/agent/sell_screen.dart';
+import 'screens/agent/agent_credits_screen.dart';
 
 void main() {
   runApp(const OpticApp());
@@ -54,6 +55,7 @@ class OpticApp extends StatelessWidget {
         '/admin/settings': (context) => const SettingsScreen(),
         '/agent/dashboard': (context) => const AgentDashboardScreen(),
         '/agent/sell': (context) => const SellScreen(),
+        '/agent/credits': (context) => const AgentCreditsScreen(),
         '/home': (context) => const _PlaceholderHome(),
       },
       home: const _AuthChecker(),

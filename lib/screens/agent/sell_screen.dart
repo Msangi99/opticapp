@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/product_list_api.dart';
 import '../../api/agent_dashboard_api.dart';
+import '../../api/payment_options_api.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
 
@@ -24,6 +25,16 @@ class _SellScreenState extends State<SellScreen> {
   String? _error;
   final _customerController = TextEditingController();
   final _priceController = TextEditingController();
+  final _downPaymentController = TextEditingController();
+  final _installmentCountController = TextEditingController();
+  final _installmentAmountController = TextEditingController();
+  final _intervalDaysController = TextEditingController();
+  final _creditNotesController = TextEditingController();
+  bool _creditSale = false;
+  DateTime? _firstDueDate;
+  List<Map<String, dynamic>> _paymentOptions = [];
+  int? _paymentOptionId;
+  bool _loadingPaymentOptions = false;
   bool _selling = false;
   bool _loadingProducts = false;
   final MobileScannerController _scannerController = MobileScannerController(
@@ -37,7 +48,27 @@ class _SellScreenState extends State<SellScreen> {
   void initState() {
     super.initState();
     _priceController.addListener(() => setState(() {}));
+    _downPaymentController.addListener(() => setState(() {}));
     _loadAvailableProducts();
+    _loadPaymentOptions();
+  }
+
+  Future<void> _loadPaymentOptions() async {
+    setState(() => _loadingPaymentOptions = true);
+    try {
+      final opts = await getAgentPaymentOptions();
+      if (!mounted) return;
+      setState(() {
+        _paymentOptions = opts;
+        _loadingPaymentOptions = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _paymentOptions = [];
+        _loadingPaymentOptions = false;
+      });
+    }
   }
 
   Future<void> _loadAvailableProducts() async {
@@ -177,6 +208,17 @@ class _SellScreenState extends State<SellScreen> {
     return price * _quantity;
   }
 
+  Future<void> _pickFirstDueDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _firstDueDate ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) setState(() => _firstDueDate = picked);
+  }
+
   Future<void> _sell() async {
     if (_device == null) return;
     final customer = _customerController.text.trim();
@@ -189,26 +231,71 @@ class _SellScreenState extends State<SellScreen> {
       setState(() => _error = 'Enter a valid selling price.');
       return;
     }
+    final unitPrice = _unitPrice ?? 0.0;
+    double down = 0;
+    if (_creditSale) {
+      final ds = _downPaymentController.text.trim();
+      if (ds.isNotEmpty) {
+        down = double.tryParse(ds) ?? 0;
+      }
+      if (down > unitPrice + 0.0001) {
+        setState(() => _error = 'Down payment cannot exceed sell price.');
+        return;
+      }
+      if (down > 0 && _paymentOptionId == null) {
+        setState(() => _error = 'Select a payment channel for the down payment.');
+        return;
+      }
+    }
     setState(() {
       _error = null;
       _selling = true;
     });
     try {
-      // API expects selling_price per unit; quantity is always 1.
-      final unitPrice = _unitPrice ?? 0.0;
-      await sellDevice(
-        productListId: _device!['id'] as int,
-        customerName: customer,
-        sellingPrice: unitPrice,
-      );
+      if (_creditSale) {
+        final ic = _installmentCountController.text.trim();
+        final ia = _installmentAmountController.text.trim();
+        final idays = _intervalDaysController.text.trim();
+        await sellDeviceCredit(
+          productListId: _device!['id'] as int,
+          customerName: customer,
+          sellingPrice: unitPrice,
+          downPayment: down,
+          paymentOptionId: _paymentOptionId,
+          installmentCount: ic.isEmpty ? null : int.tryParse(ic),
+          installmentAmount: ia.isEmpty ? null : double.tryParse(ia),
+          installmentIntervalDays: idays.isEmpty ? null : int.tryParse(idays),
+          firstDueDate: _firstDueDate != null
+              ? '${_firstDueDate!.year.toString().padLeft(4, '0')}-${_firstDueDate!.month.toString().padLeft(2, '0')}-${_firstDueDate!.day.toString().padLeft(2, '0')}'
+              : null,
+          installmentNotes: _creditNotesController.text.trim().isEmpty
+              ? null
+              : _creditNotesController.text.trim(),
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Credit sale recorded.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: successColor,
+          ),
+        );
+      } else {
+        await sellDevice(
+          productListId: _device!['id'] as int,
+          customerName: customer,
+          sellingPrice: unitPrice,
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Sale recorded (instant).'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: successColor,
+          ),
+        );
+      }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Sale recorded.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: successColor,
-        ),
-      );
       final soldId = _device!['id'] as int?;
       if (soldId != null) _soldInSessionIds.add(soldId);
       setState(() {
@@ -217,6 +304,13 @@ class _SellScreenState extends State<SellScreen> {
         _device = null;
         _customerController.clear();
         _priceController.clear();
+        _downPaymentController.clear();
+        _installmentCountController.clear();
+        _installmentAmountController.clear();
+        _intervalDaysController.clear();
+        _creditNotesController.clear();
+        _firstDueDate = null;
+        _paymentOptionId = null;
       });
       await _loadAvailableProducts();
     } catch (e) {
@@ -232,6 +326,11 @@ class _SellScreenState extends State<SellScreen> {
   void dispose() {
     _customerController.dispose();
     _priceController.dispose();
+    _downPaymentController.dispose();
+    _installmentCountController.dispose();
+    _installmentAmountController.dispose();
+    _intervalDaysController.dispose();
+    _creditNotesController.dispose();
     _scannerController.dispose();
     super.dispose();
   }
@@ -243,7 +342,7 @@ class _SellScreenState extends State<SellScreen> {
 
     return AgentScaffold(
       title: 'Record Sale',
-      showDrawer: false,
+      showDrawer: true,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -263,7 +362,7 @@ class _SellScreenState extends State<SellScreen> {
                     ),
               ),
               const SizedBox(height: 8),
-              DropdownButtonFormField<int>(
+              DropdownButtonFormField<int?>(
                 value: _selectedProductId,
                 decoration: const InputDecoration(
                   labelText: 'Select Product',
@@ -271,7 +370,7 @@ class _SellScreenState extends State<SellScreen> {
                   prefixIcon: Icon(Icons.phone_android_rounded, size: 22),
                 ),
                 items: [
-                  const DropdownMenuItem<int>(
+                  const DropdownMenuItem<int?>(
                     value: null,
                     child: Text('-- Select Product --'),
                   ),
@@ -279,11 +378,11 @@ class _SellScreenState extends State<SellScreen> {
                     final id = product['id'] as int?;
                     final model = product['model'] as String? ?? '–';
                     final imei = product['imei_number'] as String? ?? '–';
-                    return DropdownMenuItem<int>(
+                    return DropdownMenuItem<int?>(
                       value: id,
                       child: Text('$model (IMEI: $imei)'),
                     );
-                  }).toList(),
+                  }),
                 ],
                 onChanged: _onProductSelected,
               ),
@@ -466,6 +565,120 @@ class _SellScreenState extends State<SellScreen> {
                       prefixIcon: Icon(Icons.attach_money_rounded, size: 22),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Text('Sale type', style: sectionLabelStyle(context)),
+                  const SizedBox(height: 8),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment<bool>(
+                        value: false,
+                        label: Text('Instant'),
+                        icon: Icon(Icons.payments_outlined, size: 18),
+                      ),
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text('Credit'),
+                        icon: Icon(Icons.schedule_outlined, size: 18),
+                      ),
+                    ],
+                    selected: {_creditSale},
+                    onSelectionChanged: (s) {
+                      setState(() => _creditSale = s.first);
+                    },
+                  ),
+                  if (_creditSale) ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _downPaymentController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Down payment (optional)',
+                        prefixIcon: Icon(Icons.savings_outlined, size: 22),
+                      ),
+                    ),
+                    if (_loadingPaymentOptions)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 12),
+                        child: LinearProgressIndicator(),
+                      )
+                    else if (_paymentOptions.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int?>(
+                        value: _paymentOptionId,
+                        decoration: const InputDecoration(
+                          labelText: 'Payment channel (for down payment)',
+                          prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('None'),
+                          ),
+                          ..._paymentOptions.map((o) {
+                            final id = o['id'] as int?;
+                            final name = o['name']?.toString() ?? '';
+                            final bal = o['balance'];
+                            return DropdownMenuItem<int?>(
+                              value: id,
+                              child: Text('$name (${bal ?? '—'})'),
+                            );
+                          }),
+                        ],
+                        onChanged: (v) => setState(() => _paymentOptionId = v),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _installmentCountController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Number of installments (optional)',
+                        prefixIcon: Icon(Icons.numbers_rounded, size: 22),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _installmentAmountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Installment amount (optional)',
+                        prefixIcon: Icon(Icons.repeat_rounded, size: 22),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _intervalDaysController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Payment interval (days, optional)',
+                        hintText: 'e.g. 7 or 30',
+                        prefixIcon: Icon(Icons.date_range_outlined, size: 22),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('First due date (optional)'),
+                      subtitle: Text(
+                        _firstDueDate == null
+                            ? 'Not set'
+                            : '${_firstDueDate!.year}-${_firstDueDate!.month.toString().padLeft(2, '0')}-${_firstDueDate!.day.toString().padLeft(2, '0')}',
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.calendar_today_outlined),
+                        onPressed: _pickFirstDueDate,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _creditNotesController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Credit notes (optional)',
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),

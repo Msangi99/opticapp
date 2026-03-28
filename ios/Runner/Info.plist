@@ -59,6 +59,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera is used to photograph barcode labels when adding products or recording sales.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library is used to choose barcode images when adding products.</string>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
