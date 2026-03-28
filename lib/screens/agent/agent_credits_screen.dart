@@ -146,6 +146,8 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                             final c = _credits[i];
                             final id = _asInt(c['id']);
                             final customer = c['customer_name']?.toString() ?? '—';
+                            final phone = c['customer_phone']?.toString();
+                            final description = c['description']?.toString();
                             final date = c['date']?.toString();
                             final total = _asDouble(c['total_amount']);
                             final paid = _asDouble(c['paid_amount']);
@@ -206,6 +208,15 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                                             ),
                                           ],
                                         ),
+                                        if (phone != null && phone.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            phone,
+                                            style: theme.textTheme.bodySmall?.copyWith(
+                                              color: theme.colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
                                         const SizedBox(height: 6),
                                         Text(
                                           product,
@@ -213,6 +224,17 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                                             color: theme.colorScheme.onSurfaceVariant,
                                           ),
                                         ),
+                                        if (description != null && description.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            description,
+                                            style: theme.textTheme.bodySmall?.copyWith(
+                                              color: theme.colorScheme.onSurfaceVariant,
+                                            ),
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                         if (imei != null && imei.isNotEmpty)
                                           Text(
                                             'IMEI: $imei',
@@ -452,12 +474,11 @@ class _PayInstallmentSheetState extends State<_PayInstallmentSheet> {
                   prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
                 ),
                 items: _options.map((o) {
-                  final oid = o['id'] as int?;
+                  final oid = o['id'] is int ? o['id'] as int : (o['id'] is num ? (o['id'] as num).toInt() : int.tryParse(o['id'].toString()));
                   final name = o['name']?.toString() ?? '';
-                  final bal = o['balance'];
                   return DropdownMenuItem<int?>(
                     value: oid,
-                    child: Text('$name (${bal ?? '—'})'),
+                    child: Text(name),
                   );
                 }).toList(),
                 onChanged: (v) => setState(() => _paymentOptionId = v),

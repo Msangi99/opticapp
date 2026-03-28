@@ -101,36 +101,25 @@ Future<Map<String, dynamic>> sellDevice({
   return data['data'] as Map<String, dynamic>;
 }
 
-/// Credit / installment sale (full amount on credit; optional down payment).
+/// Credit sale (full amount on credit). Optional [customerPhone], [description].
 Future<Map<String, dynamic>> sellDeviceCredit({
   required int productListId,
   required String customerName,
   required double sellingPrice,
-  double downPayment = 0,
-  int? paymentOptionId,
-  int? installmentCount,
-  double? installmentAmount,
-  int? installmentIntervalDays,
-  String? firstDueDate,
-  String? installmentNotes,
+  String? customerPhone,
+  String? description,
 }) async {
   final body = <String, dynamic>{
     'product_list_id': productListId,
     'customer_name': customerName,
     'selling_price': sellingPrice,
-    'down_payment': downPayment,
+    'down_payment': 0,
   };
-  if (paymentOptionId != null) body['payment_option_id'] = paymentOptionId;
-  if (installmentCount != null) body['installment_count'] = installmentCount;
-  if (installmentAmount != null) body['installment_amount'] = installmentAmount;
-  if (installmentIntervalDays != null) {
-    body['installment_interval_days'] = installmentIntervalDays;
+  if (customerPhone != null && customerPhone.trim().isNotEmpty) {
+    body['customer_phone'] = customerPhone.trim();
   }
-  if (firstDueDate != null && firstDueDate.isNotEmpty) {
-    body['first_due_date'] = firstDueDate;
-  }
-  if (installmentNotes != null && installmentNotes.isNotEmpty) {
-    body['installment_notes'] = installmentNotes;
+  if (description != null && description.trim().isNotEmpty) {
+    body['description'] = description.trim();
   }
   final res = await apiPost('/agent/sell-credit', body);
   final data = jsonDecode(res.body) as Map<String, dynamic>;
