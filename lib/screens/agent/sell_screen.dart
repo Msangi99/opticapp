@@ -288,7 +288,16 @@ class _SellScreenState extends State<SellScreen> {
               style: sectionLabelStyle(context),
             ),
             const SizedBox(height: 16),
-            // Product Selection Dropdown
+            if (!_loadingProducts && _availableProducts.isEmpty) ...[
+              Text(
+                'No devices assigned to you yet. Ask an admin to assign IMEIs from Assign products to agent.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            // Product Selection Dropdown (API: only admin-assigned, unsold units)
             if (!_loadingProducts && _availableProducts.isNotEmpty) ...[
               Text(
                 'Select from available products:',

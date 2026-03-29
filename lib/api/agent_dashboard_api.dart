@@ -11,7 +11,7 @@ Future<Map<String, dynamic>> getAgentDashboardData() async {
   return data?['data'] as Map<String, dynamic>? ?? {};
 }
 
-/// Get available products from purchases that agent can sell.
+/// Devices assigned to this agent (admin) that are still unsold.
 Future<List<Map<String, dynamic>>> getAvailableProducts() async {
   final res = await apiGet('/agent/product-list/available');
   final data = jsonDecode(res.body) as Map<String, dynamic>?;
