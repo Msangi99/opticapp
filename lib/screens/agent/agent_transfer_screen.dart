@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../api/agent_dashboard_api.dart';
 import '../../api/agent_transfer_api.dart';
 import '../../api/client.dart';
-import '../../api/users_api.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
 
@@ -49,7 +48,7 @@ class _AgentTransferScreenState extends State<AgentTransferScreen> {
     try {
       final user = await getStoredUser();
       final selfId = user?['id'] as int? ?? (user?['id'] is num ? (user!['id'] as num).toInt() : null);
-      final agents = await getAgents();
+      final agents = await getAgentTransferRecipients();
       final devices = await getAvailableProducts();
       final labels = <int, String>{};
       final pids = <int>{};

@@ -1,6 +1,18 @@
 import 'dart:convert';
 import 'client.dart';
 
+/// Other active agents eligible as transfer recipients (agent auth; mirrors web transfer form).
+Future<List<Map<String, dynamic>>> getAgentTransferRecipients() async {
+  final res = await apiGet('/agent/transfer-recipients');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load agents');
+  }
+  final list = data?['data'];
+  if (list == null || list is! List) return [];
+  return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
+}
+
 Future<List<Map<String, dynamic>>> getTransferableImeis(int productId) async {
   final res = await apiGet('/agent/transferable-imeis?product_id=$productId');
   final data = jsonDecode(res.body) as Map<String, dynamic>?;
