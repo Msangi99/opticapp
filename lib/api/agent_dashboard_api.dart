@@ -11,6 +11,16 @@ Future<Map<String, dynamic>> getAgentDashboardData() async {
   return data?['data'] as Map<String, dynamic>? ?? {};
 }
 
+/// IMEI-level lists for overview cards: `assigned`, `remaining`, `sold`.
+Future<Map<String, dynamic>> getAgentDashboardInventory() async {
+  final res = await apiGet('/agent/dashboard/inventory');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load inventory');
+  }
+  return data?['data'] as Map<String, dynamic>? ?? {};
+}
+
 /// Devices assigned to this agent (admin) that are still unsold.
 Future<List<Map<String, dynamic>>> getAvailableProducts() async {
   final res = await apiGet('/agent/product-list/available');

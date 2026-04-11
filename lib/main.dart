@@ -21,6 +21,10 @@ import 'screens/admin/settings_screen.dart';
 import 'screens/agent/agent_dashboard_screen.dart';
 import 'screens/agent/sell_screen.dart';
 import 'screens/agent/agent_credits_screen.dart';
+import 'screens/agent/agent_transfer_screen.dart';
+import 'screens/agent/agent_my_transfers_screen.dart';
+import 'screens/admin/admin_agent_transfers_screen.dart';
+import 'screens/admin/admin_branch_transfer_screen.dart';
 
 void main() {
   runApp(const OpticApp());
@@ -51,11 +55,15 @@ class OpticApp extends StatelessWidget {
         '/admin/agents': (context) => const AgentsScreen(),
         '/admin/stock/distribution': (context) => const DistributionScreen(),
         '/admin/stock/pending-sales': (context) => const PendingSalesScreen(),
+        '/admin/stock/agent-transfers': (context) => const AdminAgentTransfersScreen(),
+        '/admin/stock/branch-transfer': (context) => const AdminBranchTransferScreen(),
         '/admin/reports': (context) => const ReportsScreen(),
         '/admin/settings': (context) => const SettingsScreen(),
         '/agent/dashboard': (context) => const AgentDashboardScreen(),
         '/agent/sell': (context) => const SellScreen(),
         '/agent/credits': (context) => const AgentCreditsScreen(),
+        '/agent/transfer': (context) => const AgentTransferScreen(),
+        '/agent/transfers': (context) => const AgentMyTransfersScreen(),
         '/home': (context) => const _PlaceholderHome(),
       },
       home: const _AuthChecker(),

@@ -145,6 +145,16 @@ class _AdminDrawer extends StatelessWidget {
                     onTap: () => _navigate(context, '/admin/stock/pending-sales'),
                   ),
                   _DrawerTile(
+                    icon: Icons.swap_horiz_rounded,
+                    label: 'Agent transfers',
+                    onTap: () => _navigate(context, '/admin/stock/agent-transfers'),
+                  ),
+                  _DrawerTile(
+                    icon: Icons.alt_route_rounded,
+                    label: 'Branch transfer',
+                    onTap: () => _navigate(context, '/admin/stock/branch-transfer'),
+                  ),
+                  _DrawerTile(
                     icon: Icons.person_pin_circle_rounded,
                     label: 'Agent Sales',
                     onTap: () => _navigate(context, '/admin/stock/agent-sales'),

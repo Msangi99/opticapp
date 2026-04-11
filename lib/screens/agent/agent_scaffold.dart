@@ -128,6 +128,36 @@ class _AgentDrawer extends StatelessWidget {
                 Navigator.pushNamed(context, '/agent/credits');
               },
             ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _kBrandDark.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.swap_horiz_rounded, size: 20, color: _kBrandDark),
+              ),
+              title: const Text('Transfer devices', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _kBrandDark)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/agent/transfer');
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _kBrandDark.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.list_alt_rounded, size: 20, color: _kBrandDark),
+              ),
+              title: const Text('Transfer requests', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: _kBrandDark)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/agent/transfers');
+              },
+            ),
             const Spacer(),
             const Divider(height: 1),
             ListTile(
