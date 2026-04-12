@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../../api/product_list_api.dart';
+import '../../api/agent_catalog_api.dart';
 import '../../api/agent_dashboard_api.dart';
+import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
 
@@ -15,10 +16,16 @@ class SellScreen extends StatefulWidget {
   State<SellScreen> createState() => _SellScreenState();
 }
 
-class _SellScreenState extends State<SellScreen> {
+class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateMixin {
+  static int? _parseIntId(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
   Map<String, dynamic>? _device;
   List<Map<String, dynamic>> _availableProducts = [];
-  /// Product list IDs sold in this session so they never appear in the dropdown.
   final Set<int> _soldInSessionIds = {};
   int? _selectedProductId;
   String? _error;
@@ -26,9 +33,9 @@ class _SellScreenState extends State<SellScreen> {
   final _customerPhoneController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
-  bool _creditSale = false;
   bool _selling = false;
   bool _loadingProducts = false;
+  late TabController _tabController;
   final MobileScannerController _scannerController = MobileScannerController(
     detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
@@ -36,11 +43,88 @@ class _SellScreenState extends State<SellScreen> {
   DateTime? _lastScanTime;
   static const _scanCooldown = Duration(seconds: 2);
 
+  // Needed tab
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _needProducts = [];
+  int? _needCategoryId;
+  int? _needProductId;
+  bool _loadingCatalog = false;
+  bool _submittingNeed = false;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _priceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
+    _loadCategoriesForNeed();
+  }
+
+  Future<void> _loadCategoriesForNeed() async {
+    setState(() => _loadingCatalog = true);
+    try {
+      final list = await getAgentCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = list;
+        _loadingCatalog = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _categories = [];
+        _loadingCatalog = false;
+      });
+    }
+  }
+
+  Future<void> _onNeedCategoryChanged(int? id) async {
+    setState(() {
+      _needCategoryId = id;
+      _needProductId = null;
+      _needProducts = [];
+    });
+    if (id == null) return;
+    try {
+      final list = await getAgentProductsInCategory(id);
+      if (!mounted) return;
+      setState(() => _needProducts = list);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _needProducts = []);
+    }
+  }
+
+  Future<void> _submitNeed() async {
+    final cid = _needCategoryId;
+    final pid = _needProductId;
+    if (cid == null || pid == null) {
+      setState(() => _error = 'Select category and model.');
+      return;
+    }
+    setState(() {
+      _error = null;
+      _submittingNeed = true;
+    });
+    try {
+      await submitAgentCustomerNeed(categoryId: cid, productId: pid);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Need submitted.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: successColor,
+        ),
+      );
+      setState(() {
+        _needProductId = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _submittingNeed = false);
+    }
   }
 
   Future<void> _loadAvailableProducts() async {
@@ -52,7 +136,6 @@ class _SellScreenState extends State<SellScreen> {
       if (!mounted) return;
       setState(() {
         final list = products.isNotEmpty ? products : <Map<String, dynamic>>[];
-        // Exclude any items already sold in this session (safety if API returns stale data).
         _availableProducts = list
             .where((p) {
               final id = p['id'];
@@ -68,7 +151,6 @@ class _SellScreenState extends State<SellScreen> {
       setState(() {
         _availableProducts = <Map<String, dynamic>>[];
         _loadingProducts = false;
-        // Don't show error, just continue without dropdown
       });
     }
   }
@@ -102,14 +184,12 @@ class _SellScreenState extends State<SellScreen> {
           }
         });
       } else {
-        // Product no longer available, reset selection
         setState(() {
           _selectedProductId = null;
           _error = 'Selected product is no longer available.';
         });
       }
     } catch (e) {
-      // Product not found, reset selection
       setState(() {
         _selectedProductId = null;
         _error = 'Selected product is no longer available.';
@@ -117,7 +197,6 @@ class _SellScreenState extends State<SellScreen> {
     }
   }
 
-  /// Scan barcode → use the scanned code as IMEI number (look up device).
   void _onScanResult(BarcodeCapture capture) {
     if (!mounted) return;
     final now = DateTime.now();
@@ -146,7 +225,6 @@ class _SellScreenState extends State<SellScreen> {
       setState(() {
         _device = device;
         _error = null;
-        // Pre-fill sell price from stock (purchase.sell_price); fallback to purchase_price
         final sellPrice = device['sell_price'];
         final price = sellPrice ?? device['purchase_price'];
         if (price != null) {
@@ -171,7 +249,6 @@ class _SellScreenState extends State<SellScreen> {
     return double.tryParse(s);
   }
 
-  /// Quantity is fixed at 1 for agent sales.
   static const int _quantity = 1;
 
   double? get _totalAmount {
@@ -180,7 +257,7 @@ class _SellScreenState extends State<SellScreen> {
     return price * _quantity;
   }
 
-  Future<void> _sell() async {
+  Future<void> _sell({required bool credit}) async {
     if (_device == null) return;
     final customer = _customerController.text.trim();
     if (customer.isEmpty) {
@@ -204,14 +281,12 @@ class _SellScreenState extends State<SellScreen> {
       _selling = true;
     });
     try {
-      if (_creditSale) {
+      if (credit) {
         await sellDeviceCredit(
           productListId: productListId,
           customerName: customer,
           sellingPrice: unitPrice,
-          customerPhone: _customerPhoneController.text.trim().isEmpty
-              ? null
-              : _customerPhoneController.text.trim(),
+          customerPhone: _customerPhoneController.text.trim(),
           description: _descriptionController.text.trim().isEmpty
               ? null
               : _descriptionController.text.trim(),
@@ -219,7 +294,7 @@ class _SellScreenState extends State<SellScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Credit sale recorded.'),
+            content: const Text('Watu sale recorded.'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: successColor,
           ),
@@ -253,8 +328,7 @@ class _SellScreenState extends State<SellScreen> {
       await _loadAvailableProducts();
     } catch (e) {
       if (!mounted) return;
-      setState(() =>
-          _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _selling = false);
     }
@@ -262,6 +336,7 @@ class _SellScreenState extends State<SellScreen> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _customerController.dispose();
     _customerPhoneController.dispose();
     _descriptionController.dispose();
@@ -274,315 +349,242 @@ class _SellScreenState extends State<SellScreen> {
   Widget build(BuildContext context) {
     final total = _totalAmount;
     final theme = Theme.of(context);
+    final tabViewHeight = (MediaQuery.sizeOf(context).height * 0.42).clamp(280.0, 520.0);
 
     return AgentScaffold(
       title: 'Record Sale',
       showDrawer: true,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Select Product or Scan IMEI',
-              style: sectionLabelStyle(context),
-            ),
-            const SizedBox(height: 16),
-            if (!_loadingProducts && _availableProducts.isEmpty) ...[
-              Text(
-                'No devices assigned to you yet. Ask an admin to assign IMEIs from Assign products to agent.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            // Product Selection Dropdown (API: only admin-assigned, unsold units)
-            if (!_loadingProducts && _availableProducts.isNotEmpty) ...[
-              Text(
-                'Select from available products:',
-                style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<int?>(
-                value: _selectedProductId,
-                decoration: const InputDecoration(
-                  labelText: 'Select Product',
-                  hintText: 'Choose a product',
-                  prefixIcon: Icon(Icons.phone_android_rounded, size: 22),
-                ),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('-- Select Product --'),
-                  ),
-                  ..._availableProducts.map((product) {
-                    final id = product['id'] as int?;
-                    final model = product['model'] as String? ?? '–';
-                    final imei = product['imei_number'] as String? ?? '–';
-                    return DropdownMenuItem<int?>(
-                      value: id,
-                      child: Text('$model (IMEI: $imei)'),
-                    );
-                  }),
-                ],
-                onChanged: _onProductSelected,
-              ),
-              const SizedBox(height: 20),
-              Row(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(child: Divider()),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'OR',
+                  Text(
+                    'Select product or scan IMEI',
+                    style: sectionLabelStyle(context),
+                  ),
+                  const SizedBox(height: 16),
+                  if (!_loadingProducts && _availableProducts.isEmpty) ...[
+                    Text(
+                      'No devices assigned to you yet. Ask an admin to assign IMEIs from Assign products to agent.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (!_loadingProducts && _availableProducts.isNotEmpty) ...[
+                    Text(
+                      'Select from available products:',
                       style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                     ),
-                  ),
-                  Expanded(child: Divider()),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
-            Text(
-              'Scan barcode (code = IMEI)',
-              style: sectionLabelStyle(context),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Point camera at barcode. The scanned code is used as the IMEI to find the device.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                clipBehavior: Clip.hardEdge,
-                child: ClipRect(
-                  clipBehavior: Clip.hardEdge,
-                  child: SizedBox(
-                    height: _scannerStripHeight,
-                    width: double.infinity,
-                    child: MobileScanner(
-                      controller: _scannerController,
-                      onDetect: _onScanResult,
-                      errorBuilder: (context, error, child) {
-                        return Container(
-                          height: _scannerStripHeight,
-                          width: double.infinity,
-                          color: Colors.red.shade50,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Center(
-                            child: Text(
-                              'Camera error',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.red.shade700,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        );
-                      },
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int?>(
+                      value: _selectedProductId,
+                      decoration: const InputDecoration(
+                        labelText: 'Select product',
+                        hintText: 'Choose a product',
+                        prefixIcon: Icon(Icons.phone_android_rounded, size: 22),
+                      ),
+                      items: [
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('-- Select product --'),
+                        ),
+                        ..._availableProducts.map((product) {
+                          final id = product['id'] as int?;
+                          final model = product['model'] as String? ?? '–';
+                          final imei = product['imei_number'] as String? ?? '–';
+                          return DropdownMenuItem<int?>(
+                            value: id,
+                            child: Text('$model (IMEI: $imei)'),
+                          );
+                        }),
+                      ],
+                      onChanged: _onProductSelected,
                     ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_error != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(_error!, style: errorStyle()),
-              ),
-              const SizedBox(height: 20),
-            ],
-            if (_device != null) ...[
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: sectionCardDecoration(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                    const SizedBox(height: 20),
                     Row(
                       children: [
-                        Icon(
-                          Icons.smartphone_rounded,
-                          color: theme.colorScheme.primary,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _device!['model'] as String? ?? '—',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'IMEI: ${_device!['imei_number']}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                              ),
-                              if (_device!['stock_name'] != null)
-                                Text(
-                                  'Stock: ${_device!['stock_name']}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'OR',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
-                              if (_device!['category_name'] != null)
-                                Text(
-                                  'Category: ${_device!['category_name']}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                            ],
                           ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  Text(
+                    'Scan barcode (code = IMEI)',
+                    style: sectionLabelStyle(context),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Point camera at barcode. The scanned code is used as the IMEI to find the device.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: sectionCardDecoration(context),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    controller: _customerController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Customer name',
-                      hintText: 'Full name',
-                      prefixIcon: Icon(Icons.person_outline_rounded, size: 22),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    readOnly: true,
-                    initialValue: '1',
-                    decoration: const InputDecoration(
-                      labelText: 'Quantity',
-                      hintText: 'Fixed at 1',
-                      prefixIcon: Icon(Icons.numbers_rounded, size: 22),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Sell price (per unit)',
-                      hintText: 'Auto from scan, or edit',
-                      prefixIcon: Icon(Icons.attach_money_rounded, size: 22),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('Sale type', style: sectionLabelStyle(context)),
-                  const SizedBox(height: 8),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment<bool>(
-                        value: false,
-                        label: Text('Instant'),
-                        icon: Icon(Icons.payments_outlined, size: 18),
-                      ),
-                      ButtonSegment<bool>(
-                        value: true,
-                        label: Text('Credit'),
-                        icon: Icon(Icons.schedule_outlined, size: 18),
-                      ),
-                    ],
-                    selected: {_creditSale},
-                    onSelectionChanged: (s) {
-                      setState(() => _creditSale = s.first);
-                    },
-                  ),
-                  if (_creditSale) ...[
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _customerPhoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Customer phone',
-                        hintText: 'Phone number',
-                        prefixIcon: Icon(Icons.phone_outlined, size: 22),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _descriptionController,
-                      keyboardType: TextInputType.multiline,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        hintText: 'Notes about this credit sale',
-                        alignLabelWithHint: true,
-                        prefixIcon: Icon(Icons.notes_outlined, size: 22),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                    child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      clipBehavior: Clip.hardEdge,
+                      child: ClipRect(
+                        clipBehavior: Clip.hardEdge,
+                        child: SizedBox(
+                          height: _scannerStripHeight,
+                          width: double.infinity,
+                          child: MobileScanner(
+                            controller: _scannerController,
+                            onDetect: _onScanResult,
+                            errorBuilder: (context, error, child) {
+                              return Container(
+                                height: _scannerStripHeight,
+                                width: double.infinity,
+                                color: Colors.red.shade50,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: Center(
+                                  child: Text(
+                                    'Camera error',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.red.shade700,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ),
+                  const SizedBox(height: 20),
+                  if (_error != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(_error!, style: errorStyle()),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  if (_device != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: sectionCardDecoration(context),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.smartphone_rounded,
+                            color: theme.colorScheme.primary,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _device!['model'] as String? ?? '—',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'IMEI: ${_device!['imei_number']}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                                if (_device!['stock_name'] != null)
+                                  Text(
+                                    'Stock: ${_device!['stock_name']}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                if (_device!['category_name'] != null)
+                                  Text(
+                                    'Category: ${_device!['category_name']}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  Material(
+                    color: theme.colorScheme.surface,
+                    child: TabBar(
+                      controller: _tabController,
+                      labelColor: theme.colorScheme.primary,
+                      unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                      tabs: const [
+                        Tab(text: 'Sell'),
+                        Tab(text: 'Watu'),
+                        Tab(text: 'Needed'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: tabViewHeight,
+                    child: TabBarView(
+                      controller: _tabController,
                       children: [
-                        Text(
-                          'Total price',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
+                        SingleChildScrollView(
+                          child: _buildSaleForm(
+                            context: context,
+                            theme: theme,
+                            total: total,
+                            credit: false,
+                          ),
                         ),
-                        Text(
-                          total != null
-                              ? total.toStringAsFixed(2)
-                              : '—',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.primary,
-                              ),
+                        SingleChildScrollView(
+                          child: _buildSaleForm(
+                            context: context,
+                            theme: theme,
+                            total: total,
+                            credit: true,
+                          ),
+                        ),
+                        SingleChildScrollView(
+                          child: _buildNeededForm(context, theme),
                         ),
                       ],
                     ),
@@ -590,25 +592,229 @@ class _SellScreenState extends State<SellScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: (_device != null && !_selling) ? _sell : null,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaleForm({
+    required BuildContext context,
+    required ThemeData theme,
+    required double? total,
+    required bool credit,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: sectionCardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_device == null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                credit
+                    ? 'Select or scan a device above to use Watu.'
+                    : 'Select or scan a device above to complete a sale.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
               ),
-              child: _selling
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Complete sale'),
+            ),
+          TextFormField(
+            controller: _customerController,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Customer name',
+              hintText: 'Full name',
+              prefixIcon: Icon(Icons.person_outline_rounded, size: 22),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            readOnly: true,
+            initialValue: '1',
+            decoration: const InputDecoration(
+              labelText: 'Quantity',
+              hintText: 'Fixed at 1',
+              prefixIcon: Icon(Icons.numbers_rounded, size: 22),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _priceController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Sell price (per unit)',
+              hintText: 'Auto from scan, or edit',
+              prefixIcon: Icon(Icons.attach_money_rounded, size: 22),
+            ),
+          ),
+          if (credit) ...[
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _customerPhoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Customer phone',
+                hintText: 'Phone number',
+                prefixIcon: Icon(Icons.phone_outlined, size: 22),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descriptionController,
+              keyboardType: TextInputType.multiline,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'Notes about this Watu sale',
+                alignLabelWithHint: true,
+                prefixIcon: Icon(Icons.notes_outlined, size: 22),
+              ),
             ),
           ],
-        ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total price',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                ),
+                Text(
+                  total != null ? total.toStringAsFixed(2) : '—',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.primary,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: (_device != null && !_selling) ? () => _sell(credit: credit) : null,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+            child: _selling
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(credit ? 'Complete Watu sale' : 'Complete sale'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNeededForm(BuildContext context, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: sectionCardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Tell the store what a customer is looking for (category and model).',
+            style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 16),
+          if (_loadingCatalog)
+            const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+          else
+            DropdownButtonFormField<int?>(
+              value: _needCategoryId,
+              decoration: const InputDecoration(
+                labelText: 'Category',
+                prefixIcon: Icon(Icons.category_outlined, size: 22),
+              ),
+              items: [
+                const DropdownMenuItem<int?>(
+                  value: null,
+                  child: Text('-- Select category --'),
+                ),
+                ..._categories
+                    .map((c) {
+                      final cid = _parseIntId(c['id']);
+                      if (cid == null) return null;
+                      return DropdownMenuItem<int?>(
+                        value: cid,
+                        child: Text(c['name']?.toString() ?? '—'),
+                      );
+                    })
+                    .whereType<DropdownMenuItem<int?>>(),
+              ],
+              onChanged: (v) => _onNeedCategoryChanged(v),
+            ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int?>(
+            value: _needProductId,
+            decoration: const InputDecoration(
+              labelText: 'Model',
+              prefixIcon: Icon(Icons.phone_android_outlined, size: 22),
+            ),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('-- Select model --'),
+              ),
+              ..._needProducts
+                  .map((p) {
+                    final pid = _parseIntId(p['id']);
+                    if (pid == null) return null;
+                    return DropdownMenuItem<int?>(
+                      value: pid,
+                      child: Text(p['name']?.toString() ?? '—'),
+                    );
+                  })
+                  .whereType<DropdownMenuItem<int?>>(),
+            ],
+            onChanged: _needCategoryId == null
+                ? null
+                : (v) {
+                    setState(() => _needProductId = v);
+                  },
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: (!_submittingNeed && _needCategoryId != null && _needProductId != null)
+                ? _submitNeed
+                : null,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+            child: _submittingNeed
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('Submit need'),
+          ),
+        ],
       ),
     );
   }

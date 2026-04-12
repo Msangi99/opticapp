@@ -153,6 +153,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final totalCustomers = _data?['total_customers'] as int? ?? 0;
     final totalOrders = _data?['total_orders'] as int? ?? 0;
     final totalProducts = _data?['total_products'] as int? ?? 0;
+    final metrics = _data?['financial_metrics'] as Map<String, dynamic>?;
+    final totalProductsInPurchases = metrics?['total_products_in_purchases'] ?? 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,35 +166,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 520;
+            final cards = [
+              _StatCard(
                 icon: Icons.people_outline,
                 iconColor: Colors.blue,
                 label: 'Total Customers',
                 value: totalCustomers.toString(),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
+              _StatCard(
                 icon: Icons.shopping_bag_outlined,
                 iconColor: Colors.purple,
                 label: 'Total Orders',
                 value: totalOrders.toString(),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
+              _StatCard(
                 icon: Icons.inventory_2_outlined,
                 iconColor: Colors.green,
                 label: 'Total Products',
                 value: totalProducts.toString(),
               ),
-            ),
-          ],
+              _StatCard(
+                icon: Icons.fact_check_outlined,
+                iconColor: Colors.teal,
+                label: 'Total products in purchases',
+                value: '$totalProductsInPurchases',
+              ),
+            ];
+            if (narrow) {
+              final half = (constraints.maxWidth - 12) / 2;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [for (final c in cards) SizedBox(width: half, child: c)],
+              );
+            }
+            return Row(
+              children: [
+                for (var i = 0; i < cards.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 12),
+                  Expanded(child: cards[i]),
+                ],
+              ],
+            );
+          },
         ),
       ],
     );
@@ -324,15 +343,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       value: _formatCurrency((metrics['total_purchase_buy_price'] as num?)?.toDouble()),
                       description: 'Total buy price of all purchases',
                       color: Colors.indigo,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _FinancialCard(
-                      label: 'Total Products in Purchases',
-                      value: '${metrics['total_products_in_purchases'] ?? 0}',
-                      description: 'Total products in all purchases',
-                      color: Colors.teal,
                     ),
                   ),
                 ],
