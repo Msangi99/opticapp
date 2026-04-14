@@ -43,13 +43,18 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   DateTime? _lastScanTime;
   static const _scanCooldown = Duration(seconds: 2);
 
-  // Needed tab
+  // Lead tab (customer need)
   List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _needProducts = [];
   int? _needCategoryId;
   int? _needProductId;
   bool _loadingCatalog = false;
   bool _submittingNeed = false;
+  final _leadCustomerNameController = TextEditingController();
+  final _leadCustomerPhoneController = TextEditingController();
+  List<Map<String, dynamic>> _branches = [];
+  int? _leadBranchId;
+  bool _loadingBranches = false;
 
   @override
   void initState() {
@@ -58,6 +63,25 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     _priceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
     _loadCategoriesForNeed();
+    _loadBranchesForLead();
+  }
+
+  Future<void> _loadBranchesForLead() async {
+    setState(() => _loadingBranches = true);
+    try {
+      final list = await getAgentBranches();
+      if (!mounted) return;
+      setState(() {
+        _branches = list;
+        _loadingBranches = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _branches = [];
+        _loadingBranches = false;
+      });
+    }
   }
 
   Future<void> _loadCategoriesForNeed() async {
@@ -102,22 +126,45 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
       setState(() => _error = 'Select category and model.');
       return;
     }
+    final name = _leadCustomerNameController.text.trim();
+    final phone = _leadCustomerPhoneController.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Enter customer name.');
+      return;
+    }
+    if (phone.isEmpty) {
+      setState(() => _error = 'Enter customer phone.');
+      return;
+    }
+    if (_branches.isNotEmpty && _leadBranchId == null) {
+      setState(() => _error = 'Select a branch.');
+      return;
+    }
     setState(() {
       _error = null;
       _submittingNeed = true;
     });
     try {
-      await submitAgentCustomerNeed(categoryId: cid, productId: pid);
+      await submitAgentCustomerNeed(
+        categoryId: cid,
+        productId: pid,
+        customerName: name,
+        customerPhone: phone,
+        branchId: _leadBranchId,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Need submitted.'),
+          content: const Text('Lead submitted.'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: successColor,
         ),
       );
       setState(() {
         _needProductId = null;
+        _leadBranchId = null;
+        _leadCustomerNameController.clear();
+        _leadCustomerPhoneController.clear();
       });
     } catch (e) {
       if (!mounted) return;
@@ -339,6 +386,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     _tabController.dispose();
     _customerController.dispose();
     _customerPhoneController.dispose();
+    _leadCustomerNameController.dispose();
+    _leadCustomerPhoneController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
     _scannerController.dispose();
@@ -557,7 +606,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                       tabs: const [
                         Tab(text: 'Sell'),
                         Tab(text: 'Watu'),
-                        Tab(text: 'Needed'),
+                        Tab(text: 'Lead'),
                       ],
                     ),
                   ),
@@ -729,6 +778,12 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildNeededForm(BuildContext context, ThemeData theme) {
+    final leadReady = _needCategoryId != null &&
+        _needProductId != null &&
+        _leadCustomerNameController.text.trim().isNotEmpty &&
+        _leadCustomerPhoneController.text.trim().isNotEmpty &&
+        (_branches.isEmpty || _leadBranchId != null);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: sectionCardDecoration(context),
@@ -736,11 +791,70 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Tell the store what a customer is looking for (category and model).',
+            'Submit a lead: who is asking, which branch they prefer, and what product they want.',
             style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
           ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _leadCustomerNameController,
+            textCapitalization: TextCapitalization.words,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Customer name',
+              hintText: 'Full name',
+              prefixIcon: Icon(Icons.person_outline_rounded, size: 22),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _leadCustomerPhoneController,
+            keyboardType: TextInputType.phone,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Customer phone',
+              hintText: 'Phone number',
+              prefixIcon: Icon(Icons.phone_outlined, size: 22),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_loadingBranches)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+            )
+          else if (_branches.isNotEmpty)
+            DropdownButtonFormField<int?>(
+              value: _leadBranchId,
+              decoration: const InputDecoration(
+                labelText: 'Branch',
+                hintText: 'Where they shop / pick up',
+                prefixIcon: Icon(Icons.store_mall_directory_outlined, size: 22),
+              ),
+              items: [
+                const DropdownMenuItem<int?>(
+                  value: null,
+                  child: Text('-- Select branch --'),
+                ),
+                ..._branches.map((b) {
+                  final bid = _parseIntId(b['id']);
+                  if (bid == null) return null;
+                  return DropdownMenuItem<int?>(
+                    value: bid,
+                    child: Text(b['name']?.toString() ?? '—'),
+                  );
+                }).whereType<DropdownMenuItem<int?>>(),
+              ],
+              onChanged: (v) => setState(() => _leadBranchId = v),
+            )
+          else
+            Text(
+              'No branches in the system yet. Ask an admin to add branches; you can still submit category and model.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+            ),
           const SizedBox(height: 16),
           if (_loadingCatalog)
             const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
@@ -800,9 +914,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
           ),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: (!_submittingNeed && _needCategoryId != null && _needProductId != null)
-                ? _submitNeed
-                : null,
+            onPressed: (!_submittingNeed && leadReady) ? _submitNeed : null,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
             ),
@@ -812,7 +924,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                     width: 24,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Submit need'),
+                : const Text('Submit lead'),
           ),
         ],
       ),
