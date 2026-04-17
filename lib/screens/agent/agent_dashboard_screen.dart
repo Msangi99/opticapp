@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../api/agent_dashboard_api.dart';
+import '../../api/invoice_api.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
 
@@ -137,7 +138,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.errorContainer.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(_error!, style: errorStyle()),
@@ -145,29 +148,32 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                       ),
                     )
                   : _data == null
-                      ? const Center(child: Text('No data available'))
-                      : SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Products assigned to you. Record a sale when you sell to a customer.',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
-                              ),
-                              const SizedBox(height: 20),
-                              _buildStatsGrid(),
-                              const SizedBox(height: 24),
-                              _buildAssignments(),
-                              const SizedBox(height: 24),
-                              _buildRecentSales(),
-                              const SizedBox(height: 80),
-                            ],
+                  ? const Center(child: Text('No data available'))
+                  : SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Products assigned to you. Record a sale when you sell to a customer.',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           ),
-                        ),
+                          const SizedBox(height: 20),
+                          _buildStatsGrid(),
+                          const SizedBox(height: 24),
+                          _buildAssignments(),
+                          const SizedBox(height: 24),
+                          _buildRecentSales(),
+                          const SizedBox(height: 80),
+                        ],
+                      ),
+                    ),
             ),
     );
   }
@@ -183,9 +189,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
       children: [
         Text(
           'Overview',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Row(
@@ -225,8 +231,8 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
         Text(
           'Tap a card to see products and IMEIs',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -234,18 +240,16 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
 
   Widget _buildAssignments() {
     final assignmentsRaw = _data?['assignments'];
-    final assignments = assignmentsRaw is List
-        ? assignmentsRaw
-        : <dynamic>[];
+    final assignments = assignmentsRaw is List ? assignmentsRaw : <dynamic>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'My Assigned Products',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Container(
@@ -282,14 +286,20 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                           ),
                         ),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           onTap: remaining > 0
-                              ? () => Navigator.pushNamed(context, '/agent/sell')
+                              ? () =>
+                                    Navigator.pushNamed(context, '/agent/sell')
                               : null,
                           leading: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
@@ -300,21 +310,28 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                           ),
                           title: Text(
                             '$categoryName – $productName',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text(
                             'Assigned: $assigned · Sold: $sold · Remaining: $remaining',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                           ),
                           trailing: remaining > 0
                               ? Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: const Text(
@@ -330,7 +347,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                                   'No stock',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                         ),
@@ -345,18 +364,16 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
 
   Widget _buildRecentSales() {
     final recentSalesRaw = _data?['recent_sales'];
-    final recentSales = recentSalesRaw is List
-        ? recentSalesRaw
-        : <dynamic>[];
+    final recentSales = recentSalesRaw is List ? recentSalesRaw : <dynamic>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Recent Sales',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Container(
@@ -379,7 +396,8 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                       final s = sale as Map<String, dynamic>;
                       final customerName = s['customer_name'] as String? ?? '–';
                       final productName = s['product_name'] as String? ?? '–';
-                      final totalValue = (s['total_selling_value'] as num?)?.toDouble() ?? 0.0;
+                      final totalValue =
+                          (s['total_selling_value'] as num?)?.toDouble() ?? 0.0;
                       final profit = (s['profit'] as num?)?.toDouble() ?? 0.0;
                       final date = s['date'] as String?;
 
@@ -387,10 +405,15 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Column(
@@ -407,16 +430,20 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                                 Expanded(
                                   child: Text(
                                     customerName,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
                                 ),
                                 Text(
                                   _formatCurrency(totalValue),
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
                                         fontWeight: FontWeight.bold,
-                                        color: Theme.of(context).colorScheme.primary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                       ),
                                 ),
                               ],
@@ -433,13 +460,17 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                                 if (date != null)
                                   Text(
                                     _formatDate(date),
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
                                         ),
                                   ),
                                 Text(
                                   'Profit: ${_formatCurrency(profit)}',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
                                         color: Colors.green.shade700,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -483,7 +514,9 @@ class _StatCard extends StatelessWidget {
         borderRadius: radius,
         child: Ink(
           padding: const EdgeInsets.all(16),
-          decoration: sectionCardDecoration(context).copyWith(borderRadius: radius),
+          decoration: sectionCardDecoration(
+            context,
+          ).copyWith(borderRadius: radius),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -501,7 +534,9 @@ class _StatCard extends StatelessWidget {
                   Icon(
                     Icons.chevron_right_rounded,
                     size: 20,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                   ),
                 ],
               ),
@@ -509,15 +544,15 @@ class _StatCard extends StatelessWidget {
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -559,8 +594,8 @@ class _InventorySheet extends StatelessWidget {
                     child: Text(
                       title,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -576,17 +611,21 @@ class _InventorySheet extends StatelessWidget {
                 future: future,
                 builder: (context, snap) {
                   if (snap.connectionState != ConnectionState.done) {
-                    return const Center(child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: CircularProgressIndicator(),
-                    ));
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
                   }
                   if (snap.hasError) {
                     return Padding(
                       padding: const EdgeInsets.all(24),
                       child: Text(
                         snap.error.toString().replaceFirst('Exception: ', ''),
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     );
                   }
@@ -599,7 +638,11 @@ class _InventorySheet extends StatelessWidget {
                         padding: const EdgeInsets.all(24),
                         child: Text(
                           'No devices in this list.',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     );
@@ -623,7 +666,11 @@ class _InventorySheet extends StatelessWidget {
     );
   }
 
-  static Widget _inventoryListTile(BuildContext context, Map<String, dynamic> row, bool showStateChip) {
+  static Widget _inventoryListTile(
+    BuildContext context,
+    Map<String, dynamic> row,
+    bool showStateChip,
+  ) {
     final category = row['category_name']?.toString() ?? '–';
     final product = row['product_name']?.toString() ?? '–';
     final imei = row['imei_number']?.toString() ?? '–';
@@ -631,9 +678,13 @@ class _InventorySheet extends StatelessWidget {
     final state = row['state']?.toString();
     final customer = row['customer_name']?.toString();
     final soldAt = row['sold_at']?.toString();
+    final invoiceAvailable = row['invoice_available'] == true;
+    final invoiceEndpoint = row['invoice_endpoint']?.toString();
 
     return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -647,8 +698,8 @@ class _InventorySheet extends StatelessWidget {
                   child: Text(
                     '$category · $product',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 if (showStateChip && state != null)
@@ -658,28 +709,30 @@ class _InventorySheet extends StatelessWidget {
                   ),
               ],
             ),
+            if (customer != null && customer.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Customer: $customer',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
             const SizedBox(height: 6),
             Text(
               'IMEI: $imei',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                  ),
+                fontFamily: 'monospace',
+                fontSize: 13,
+              ),
             ),
             if (model != null && model.isNotEmpty && model != product) ...[
               const SizedBox(height: 4),
               Text(
                 model,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            ],
-            if (customer != null && customer.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Customer: $customer',
-                style: Theme.of(context).textTheme.bodySmall,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
             if (soldAt != null && soldAt.isNotEmpty) ...[
@@ -687,14 +740,50 @@ class _InventorySheet extends StatelessWidget {
               Text(
                 'Sold: ${_formatSoldDate(soldAt)}',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (invoiceAvailable &&
+                invoiceEndpoint != null &&
+                invoiceEndpoint.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => _downloadInvoice(context, invoiceEndpoint),
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: const Text('Download invoice'),
+                ),
               ),
             ],
           ],
         ),
       ),
     );
+  }
+
+  static Future<void> _downloadInvoice(
+    BuildContext context,
+    String endpoint,
+  ) async {
+    try {
+      final path = await downloadInvoiceHtml(
+        endpoint: endpoint,
+        fallbackFilename:
+            'sale-invoice-${DateTime.now().millisecondsSinceEpoch}.html',
+      );
+      if (!context.mounted) return;
+      await openDownloadedFile(path);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   static String _formatSoldDate(String iso) {
