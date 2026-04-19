@@ -90,12 +90,17 @@ Future<Map<String, dynamic>> sellDevice({
   required int productListId,
   required String customerName,
   required double sellingPrice,
+  int? paymentOptionId,
 }) async {
-  final res = await apiPost('/agent/sell', {
+  final body = <String, dynamic>{
     'product_list_id': productListId,
     'customer_name': customerName,
     'selling_price': sellingPrice,
-  });
+  };
+  if (paymentOptionId != null) {
+    body['payment_option_id'] = paymentOptionId;
+  }
+  final res = await apiPost('/agent/sell', body);
   final data = jsonDecode(res.body) as Map<String, dynamic>;
   if (res.statusCode != 201) throw Exception(data['message']?.toString() ?? 'Sale failed');
   return data['data'] as Map<String, dynamic>;

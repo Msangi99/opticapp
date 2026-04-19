@@ -768,10 +768,10 @@ class _InventorySheet extends StatelessWidget {
     String endpoint,
   ) async {
     try {
-      final path = await downloadInvoiceHtml(
+      final path = await downloadInvoicePdf(
         endpoint: endpoint,
         fallbackFilename:
-            'sale-invoice-${DateTime.now().millisecondsSinceEpoch}.html',
+            'sale-invoice-${DateTime.now().millisecondsSinceEpoch}.pdf',
       );
       if (!context.mounted) return;
       await openDownloadedFile(path);

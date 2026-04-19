@@ -102,9 +102,9 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
     final id = _asInt(credit['id']);
     if (id == null) return;
     try {
-      final path = await downloadInvoiceHtml(
+      final path = await downloadInvoicePdf(
         endpoint: '/agent/credits/$id/invoice',
-        fallbackFilename: 'agent-credit-invoice-$id.html',
+        fallbackFilename: 'agent-credit-invoice-$id.pdf',
       );
       if (!mounted) return;
       await openDownloadedFile(path);

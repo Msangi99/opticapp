@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/agent_catalog_api.dart';
 import '../../api/agent_dashboard_api.dart';
+import '../../api/payment_options_api.dart';
 import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
+import '../shared/scanner_dialog.dart';
 import 'agent_scaffold.dart';
-
-/// Approximate height of 1 cm in logical pixels (device-independent).
-const double _scannerStripHeight = 40.0;
 
 class SellScreen extends StatefulWidget {
   const SellScreen({super.key});
@@ -36,12 +34,12 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   bool _selling = false;
   bool _loadingProducts = false;
   late TabController _tabController;
-  final MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
-    facing: CameraFacing.back,
-  );
-  DateTime? _lastScanTime;
-  static const _scanCooldown = Duration(seconds: 2);
+  bool _scanning = false;
+
+  // Payment channels for the Sell tab
+  List<Map<String, dynamic>> _paymentChannels = [];
+  int? _selectedChannelId;
+  bool _loadingChannels = false;
 
   // Lead tab (customer need)
   List<Map<String, dynamic>> _categories = [];
@@ -62,8 +60,27 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     _tabController = TabController(length: 3, vsync: this);
     _priceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
+    _loadPaymentChannels();
     _loadCategoriesForNeed();
     _loadBranchesForLead();
+  }
+
+  Future<void> _loadPaymentChannels() async {
+    setState(() => _loadingChannels = true);
+    try {
+      final list = await getAgentPaymentOptions();
+      if (!mounted) return;
+      setState(() {
+        _paymentChannels = list;
+        _loadingChannels = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _paymentChannels = [];
+        _loadingChannels = false;
+      });
+    }
   }
 
   Future<void> _loadBranchesForLead() async {
@@ -244,19 +261,14 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _onScanResult(BarcodeCapture capture) {
-    if (!mounted) return;
-    final now = DateTime.now();
-    if (_lastScanTime != null && now.difference(_lastScanTime!) < _scanCooldown) {
-      return;
-    }
-    for (final barcode in capture.barcodes) {
-      final code = barcode.rawValue ?? barcode.displayValue;
-      if (code != null && code.trim().isNotEmpty) {
-        _lastScanTime = now;
-        _lookupImei(code.trim());
-        return;
-      }
+  Future<void> _openScanner() async {
+    setState(() => _scanning = true);
+    try {
+      final code = await showBarcodeScannerDialog(context);
+      if (!mounted || code == null) return;
+      await _lookupImei(code);
+    } finally {
+      if (mounted) setState(() => _scanning = false);
     }
   }
 
@@ -351,11 +363,19 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
           productListId: productListId,
           customerName: customer,
           sellingPrice: unitPrice,
+          paymentOptionId: _selectedChannelId,
         );
         if (!mounted) return;
+        final channelName = _paymentChannels
+            .where((c) => c['id'] == _selectedChannelId)
+            .map((c) => c['name']?.toString() ?? '')
+            .firstOrNull;
+        final msg = channelName != null && channelName.isNotEmpty
+            ? 'Sale recorded via $channelName.'
+            : 'Sale recorded.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Sale recorded (instant).'),
+            content: Text(msg),
             behavior: SnackBarBehavior.floating,
             backgroundColor: successColor,
           ),
@@ -367,6 +387,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
         _availableProducts.removeWhere((product) => product['id'] == _device!['id']);
         _selectedProductId = null;
         _device = null;
+        _selectedChannelId = null;
         _customerController.clear();
         _customerPhoneController.clear();
         _descriptionController.clear();
@@ -390,7 +411,6 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     _leadCustomerPhoneController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
-    _scannerController.dispose();
     super.dispose();
   }
 
@@ -477,60 +497,24 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 20),
                   ],
                   Text(
-                    'Scan barcode (code = IMEI)',
+                    'Scan IMEI barcode',
                     style: sectionLabelStyle(context),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Point camera at barcode. The scanned code is used as the IMEI to find the device.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                  ),
                   const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      clipBehavior: Clip.hardEdge,
-                      child: ClipRect(
-                        clipBehavior: Clip.hardEdge,
-                        child: SizedBox(
-                          height: _scannerStripHeight,
-                          width: double.infinity,
-                          child: MobileScanner(
-                            controller: _scannerController,
-                            onDetect: _onScanResult,
-                            errorBuilder: (context, error, child) {
-                              return Container(
-                                height: _scannerStripHeight,
-                                width: double.infinity,
-                                color: Colors.red.shade50,
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                child: Center(
-                                  child: Text(
-                                    'Camera error',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.red.shade700,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _scanning ? null : _openScanner,
+                      icon: _scanning
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.qr_code_scanner_rounded),
+                      label: Text(_scanning ? 'Looking up device…' : 'Open camera to scan IMEI'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
                       ),
                     ),
                   ),
@@ -700,6 +684,45 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
               prefixIcon: Icon(Icons.attach_money_rounded, size: 22),
             ),
           ),
+          if (!credit) ...[
+            const SizedBox(height: 16),
+            if (_loadingChannels)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Center(
+                  child: SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else
+              DropdownButtonFormField<int?>(
+                value: _selectedChannelId,
+                decoration: const InputDecoration(
+                  labelText: 'Payment channel',
+                  hintText: 'Select channel (optional)',
+                  prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('-- Select channel --'),
+                  ),
+                  ..._paymentChannels.map((ch) {
+                    final id = ch['id'];
+                    final intId = id is int ? id : (id is num ? id.toInt() : int.tryParse(id.toString()));
+                    if (intId == null) return null;
+                    return DropdownMenuItem<int?>(
+                      value: intId,
+                      child: Text(ch['name']?.toString() ?? '—'),
+                    );
+                  }).whereType<DropdownMenuItem<int?>>(),
+                ],
+                onChanged: (v) => setState(() => _selectedChannelId = v),
+              ),
+          ],
           if (credit) ...[
             const SizedBox(height: 16),
             TextFormField(

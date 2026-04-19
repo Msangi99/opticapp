@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:open_filex/open_filex.dart';
@@ -5,13 +6,21 @@ import 'package:path_provider/path_provider.dart';
 
 import 'client.dart';
 
-Future<String> downloadInvoiceHtml({
+/// Downloads a PDF invoice/receipt from the API (binary body).
+Future<String> downloadInvoicePdf({
   required String endpoint,
   required String fallbackFilename,
 }) async {
   final res = await apiGet(endpoint);
   if (res.statusCode != 200) {
-    throw Exception('Failed to download invoice.');
+    String? apiMessage;
+    try {
+      final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+      if (decoded is Map && decoded['message'] != null) {
+        apiMessage = decoded['message'].toString();
+      }
+    } catch (_) {}
+    throw Exception(apiMessage ?? 'Failed to download invoice.');
   }
 
   final downloadsDir = await getApplicationDocumentsDirectory();
