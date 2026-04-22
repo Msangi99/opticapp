@@ -3,7 +3,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
-import '../shared/scanner_dialog.dart';
 import 'admin_scaffold.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -87,37 +86,51 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _syncFieldFromSet(existing);
   }
 
-  // ── Camera: live scanner dialog (reliable for Code128 / IMEI labels) ─────
-  Future<void> _scanWithCamera() async {
-    final code = await showBarcodeScannerDialog(context);
-    if (!mounted || code == null) return;
+  // ── Camera: capture image first, then scan ─────
+  Future<void> _captureAndScan() async {
+    final image = await _picker.pickImage(source: ImageSource.camera);
+    if (image == null || !mounted) return;
+    
     setState(() {
-      _addCodeToField(code);
+      _decoding = true;
       _error = null;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Added: $code'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: successColor,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    // Keep scanning – ask if user wants to scan another
-    if (!mounted) return;
-    final again = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Scan another?'),
-        content: Text('Added "$code". Scan another barcode?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Done')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Scan more')),
-        ],
-      ),
-    );
-    if (again == true && mounted) {
-      await _scanWithCamera();
+    
+    try {
+      final barcodes = await _barcodesFromFilePath(image.path);
+      if (!mounted) return;
+      
+      if (barcodes.isEmpty) {
+        setState(() {
+          _decoding = false;
+          _error = 'No barcode detected in the captured image. '
+              'Make sure the barcode is clear and visible. Try again.';
+        });
+        return;
+      }
+      
+      final merged = _imeisFromField();
+      merged.addAll(barcodes);
+      
+      setState(() {
+        _syncFieldFromSet(merged);
+        _decoding = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added ${barcodes.length} barcode(s)'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: successColor,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _decoding = false;
+        _error = 'Error scanning image: ${e.toString()}';
+      });
     }
   }
 
@@ -164,8 +177,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         if (merged.isEmpty) {
           _error =
               'No barcode found in the selected photo(s). '
-              'For IMEI labels (Code 128), use the Camera button to scan live — '
-              'it works reliably for all barcode types.';
+              'Make sure the photo is clear and the barcode is visible. '
+              'Try using the Capture & scan button for better results.';
         }
       });
     } catch (e) {
@@ -179,12 +192,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Future<void> _save() async {
     if (_selectedPurchaseId == null) {
-      setState(() => _error = 'Select a purchase.');
+      setState(() => _error = '❌ Select a purchase first.');
       return;
     }
     final imeis = _imeisFromField().toList();
     if (imeis.isEmpty) {
-      setState(() => _error = 'Add at least one IMEI.');
+      setState(() => _error = '❌ Add at least one IMEI.');
       return;
     }
     setState(() {
@@ -197,26 +210,60 @@ class _AddProductScreenState extends State<AddProductScreen> {
         imeiNumbers: imeis,
       );
       if (!mounted) return;
+      
       final data = result['data'] as Map<String, dynamic>?;
       final created = (data?['created'] as List?) ?? [];
       final failed = (data?['failed'] as List?) ?? [];
-      final msg = StringBuffer('Added ${created.length} product(s).');
-      if (failed.isNotEmpty) msg.write(' ${failed.length} skipped.');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(msg.toString()),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: successColor,
-        ),
-      );
-      _imeiController.clear();
-      _load();
+      
+      if (created.isNotEmpty) {
+        final msg = StringBuffer('✅ Added ${created.length} product(s).');
+        if (failed.isNotEmpty) msg.write(' ⚠️ ${failed.length} skipped.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg.toString()),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: successColor,
+          ),
+        );
+        _imeiController.clear();
+        _load();
+      } else if (failed.isNotEmpty) {
+        setState(() {
+          _error = _buildDetailedFailureMessage(failed);
+        });
+      } else {
+        setState(() => _error = '❌ No devices added. Please verify the IMEIs and try again.');
+      }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = '❌ Error: ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  String _buildDetailedFailureMessage(List<dynamic> failed) {
+    if (failed.isEmpty) return '❌ No devices added.';
+    
+    int duplicates = 0;
+    int limitExhausted = 0;
+    
+    for (final item in failed) {
+      final msg = item['message']?.toString() ?? '';
+      if (msg.contains('already')) duplicates++;
+      if (msg.contains('limit')) limitExhausted++;
+    }
+    
+    final messages = ['❌ No devices added:'];
+    
+    if (duplicates > 0) {
+      messages.add('• $duplicates IMEI(s) already exist in the system');
+    }
+    if (limitExhausted > 0) {
+      messages.add('• $limitExhausted IMEI(s): Purchase limit exhausted');
+    }
+    
+    return messages.join('\n');
   }
 
   @override
@@ -253,8 +300,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     Text('Add barcodes', style: sectionLabelStyle(context)),
                     const SizedBox(height: 4),
                     Text(
-                      'Use Camera to scan live (recommended for IMEI labels). '
-                      'Gallery reads QR codes from saved photos.',
+                      'Capture a photo of the barcode, then scan. '
+                      'Gallery reads saved photos.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
@@ -264,9 +311,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       children: [
                         Expanded(
                           child: FilledButton.icon(
-                            onPressed: _decoding ? null : _scanWithCamera,
-                            icon: const Icon(Icons.qr_code_scanner_rounded),
-                            label: const Text('Camera (scan live)'),
+                            onPressed: _decoding ? null : _captureAndScan,
+                            icon: const Icon(Icons.camera_alt_rounded),
+                            label: const Text('Capture & scan'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -274,7 +321,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           child: OutlinedButton.icon(
                             onPressed: _decoding ? null : _pickFromGallery,
                             icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('Gallery (QR)'),
+                            label: const Text('Gallery'),
                           ),
                         ),
                       ],
@@ -303,7 +350,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               .withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text(_error!, style: errorStyle()),
+                        child: Text(
+                          _error!,
+                          style: errorStyle(),
+                          maxLines: null,
+                        ),
                       ),
                       const SizedBox(height: 20),
                     ],

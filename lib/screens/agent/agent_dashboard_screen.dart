@@ -398,7 +398,6 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                       final productName = s['product_name'] as String? ?? '–';
                       final totalValue =
                           (s['total_selling_value'] as num?)?.toDouble() ?? 0.0;
-                      final profit = (s['profit'] as num?)?.toDouble() ?? 0.0;
                       final date = s['date'] as String?;
 
                       return Container(
@@ -467,14 +466,6 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                                           ).colorScheme.onSurfaceVariant,
                                         ),
                                   ),
-                                Text(
-                                  'Profit: ${_formatCurrency(profit)}',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Colors.green.shade700,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
                               ],
                             ),
                           ],

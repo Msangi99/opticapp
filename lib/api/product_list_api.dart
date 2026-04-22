@@ -112,6 +112,8 @@ Future<Map<String, dynamic>> sellDeviceCredit({
   required String customerName,
   required double sellingPrice,
   String? customerPhone,
+  String? kinName,
+  String? kinPhone,
   String? description,
 }) async {
   final body = <String, dynamic>{
@@ -122,6 +124,12 @@ Future<Map<String, dynamic>> sellDeviceCredit({
   };
   if (customerPhone != null && customerPhone.trim().isNotEmpty) {
     body['customer_phone'] = customerPhone.trim();
+  }
+  if (kinName != null && kinName.trim().isNotEmpty) {
+    body['kin_name'] = kinName.trim();
+  }
+  if (kinPhone != null && kinPhone.trim().isNotEmpty) {
+    body['kin_phone'] = kinPhone.trim();
   }
   if (description != null && description.trim().isNotEmpty) {
     body['description'] = description.trim();

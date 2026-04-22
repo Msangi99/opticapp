@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/agent_catalog_api.dart';
 import '../../api/agent_dashboard_api.dart';
 import '../../api/payment_options_api.dart';
 import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
-import '../shared/scanner_dialog.dart';
 import 'agent_scaffold.dart';
 
 class SellScreen extends StatefulWidget {
@@ -29,6 +30,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   String? _error;
   final _customerController = TextEditingController();
   final _customerPhoneController = TextEditingController();
+  final _kinNameController = TextEditingController();
+  final _kinPhoneController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
   bool _selling = false;
@@ -70,8 +73,10 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     try {
       final list = await getAgentPaymentOptions();
       if (!mounted) return;
+      final defaultId = list.isNotEmpty ? _parseIntId(list.first['id']) : null;
       setState(() {
         _paymentChannels = list;
+        _selectedChannelId = defaultId;
         _loadingChannels = false;
       });
     } catch (_) {
@@ -262,14 +267,50 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _openScanner() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.camera);
+    if (image == null || !mounted) return;
+    
     setState(() => _scanning = true);
     try {
-      final code = await showBarcodeScannerDialog(context);
-      if (!mounted || code == null) return;
+      final barcodes = await _analyzeImageForImei(image.path);
+      if (!mounted) return;
+      
+      if (barcodes.isEmpty) {
+        setState(() {
+          _scanning = false;
+          _error = 'No barcode detected in the captured image. Try again.';
+        });
+        return;
+      }
+      
+      // Use the first detected barcode
+      final code = barcodes.first;
       await _lookupImei(code);
-    } finally {
-      if (mounted) setState(() => _scanning = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _scanning = false;
+        _error = 'Error scanning: ${e.toString()}';
+      });
     }
+  }
+
+  Future<Set<String>> _analyzeImageForImei(String path) async {
+    final found = <String>{};
+    try {
+      final controller = MobileScannerController(autoStart: false);
+      final result = await controller.analyzeImage(path);
+      if (result is BarcodeCapture) {
+        for (final b in result.barcodes) {
+          final c = (b.rawValue ?? b.displayValue ?? '').trim();
+          if (c.isNotEmpty) found.add(c);
+        }
+      }
+      controller.dispose();
+    } catch (_) {
+      /* no code readable in this image */
+    }
+    return found;
   }
 
   Future<void> _lookupImei(String imei) async {
@@ -295,9 +336,18 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
       });
     } catch (e) {
       if (!mounted) return;
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
       setState(() {
         _device = null;
-        _error = e.toString().replaceFirst('Exception: ', '');
+        if (errorMsg.contains('not found')) {
+          _error = '❌ IMEI not found: "$imei" is not in the system. Check the barcode or enter manually.';
+        } else if (errorMsg.contains('already sold')) {
+          _error = '⚠️ Device already sold: This IMEI has already been sold.';
+        } else if (errorMsg.contains('assigned')) {
+          _error = '⚠️ Already assigned: This device is assigned to another agent.';
+        } else {
+          _error = '❌ Error: $errorMsg';
+        }
       });
     }
   }
@@ -346,6 +396,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
           customerName: customer,
           sellingPrice: unitPrice,
           customerPhone: _customerPhoneController.text.trim(),
+          kinName: _kinNameController.text.trim(),
+          kinPhone: _kinPhoneController.text.trim(),
           description: _descriptionController.text.trim().isEmpty
               ? null
               : _descriptionController.text.trim(),
@@ -387,9 +439,12 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
         _availableProducts.removeWhere((product) => product['id'] == _device!['id']);
         _selectedProductId = null;
         _device = null;
-        _selectedChannelId = null;
+        _selectedChannelId =
+            _paymentChannels.isNotEmpty ? _parseIntId(_paymentChannels.first['id']) : null;
         _customerController.clear();
         _customerPhoneController.clear();
+        _kinNameController.clear();
+        _kinPhoneController.clear();
         _descriptionController.clear();
         _priceController.clear();
       });
@@ -407,6 +462,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     _tabController.dispose();
     _customerController.dispose();
     _customerPhoneController.dispose();
+    _kinNameController.dispose();
+    _kinPhoneController.dispose();
     _leadCustomerNameController.dispose();
     _leadCustomerPhoneController.dispose();
     _descriptionController.dispose();
@@ -511,8 +568,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                               width: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.qr_code_scanner_rounded),
-                      label: Text(_scanning ? 'Looking up device…' : 'Open camera to scan IMEI'),
+                          : const Icon(Icons.camera_alt_rounded),
+                      label: Text(_scanning ? 'Looking up device…' : 'Capture & scan IMEI'),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                       ),
@@ -526,7 +583,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                         color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(_error!, style: errorStyle()),
+                      child: Text(_error!, style: errorStyle(), maxLines: null),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -702,14 +759,10 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 value: _selectedChannelId,
                 decoration: const InputDecoration(
                   labelText: 'Payment channel',
-                  hintText: 'Select channel (optional)',
+                  hintText: 'Configured default channel',
                   prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
                 ),
                 items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('-- Select channel --'),
-                  ),
                   ..._paymentChannels.map((ch) {
                     final id = ch['id'];
                     final intId = id is int ? id : (id is num ? id.toInt() : int.tryParse(id.toString()));
@@ -720,7 +773,9 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                     );
                   }).whereType<DropdownMenuItem<int?>>(),
                 ],
-                onChanged: (v) => setState(() => _selectedChannelId = v),
+                onChanged: _paymentChannels.length <= 1
+                    ? null
+                    : (v) => setState(() => _selectedChannelId = v),
               ),
           ],
           if (credit) ...[
@@ -732,6 +787,26 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 labelText: 'Customer phone',
                 hintText: 'Phone number',
                 prefixIcon: Icon(Icons.phone_outlined, size: 22),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _kinNameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Kin name',
+                hintText: 'Next of kin full name',
+                prefixIcon: Icon(Icons.badge_outlined, size: 22),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _kinPhoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Kin phone number',
+                hintText: 'Next of kin phone',
+                prefixIcon: Icon(Icons.phone_forwarded_outlined, size: 22),
               ),
             ),
             const SizedBox(height: 16),
