@@ -86,6 +86,16 @@ Future<Map<String, dynamic>> getDeviceByImei(String imei) async {
   return data['data'] as Map<String, dynamic>;
 }
 
+/// Fetch available channels and Watu default for the sell screen.
+Future<Map<String, dynamic>> getAgentSaleConfig() async {
+  final res = await apiGet('/agent/sale-config');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load sale config');
+  }
+  return data?['data'] as Map<String, dynamic>? ?? {};
+}
+
 Future<Map<String, dynamic>> sellDevice({
   required int productListId,
   required String customerName,
@@ -97,9 +107,13 @@ Future<Map<String, dynamic>> sellDevice({
     'customer_name': customerName,
     'selling_price': sellingPrice,
   };
+<<<<<<< Updated upstream
   if (paymentOptionId != null) {
     body['payment_option_id'] = paymentOptionId;
   }
+=======
+  if (paymentOptionId != null) body['payment_option_id'] = paymentOptionId;
+>>>>>>> Stashed changes
   final res = await apiPost('/agent/sell', body);
   final data = jsonDecode(res.body) as Map<String, dynamic>;
   if (res.statusCode != 201) throw Exception(data['message']?.toString() ?? 'Sale failed');

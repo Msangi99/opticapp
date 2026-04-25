@@ -37,12 +37,27 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   bool _selling = false;
   bool _loadingProducts = false;
   late TabController _tabController;
+<<<<<<< Updated upstream
   bool _scanning = false;
 
   // Payment channels for the Sell tab
   List<Map<String, dynamic>> _paymentChannels = [];
   int? _selectedChannelId;
   bool _loadingChannels = false;
+=======
+
+  // Payment channel state
+  List<Map<String, dynamic>> _regularChannels = [];
+  Map<String, dynamic>? _watuChannel;
+  int? _selectedChannelId;
+  bool _loadingConfig = false;
+  final MobileScannerController _scannerController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.normal,
+    facing: CameraFacing.back,
+  );
+  DateTime? _lastScanTime;
+  static const _scanCooldown = Duration(seconds: 2);
+>>>>>>> Stashed changes
 
   // Lead tab (customer need)
   List<Map<String, dynamic>> _categories = [];
@@ -66,6 +81,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     _loadPaymentChannels();
     _loadCategoriesForNeed();
     _loadBranchesForLead();
+    _loadSaleConfig();
   }
 
   Future<void> _loadPaymentChannels() async {
@@ -102,6 +118,30 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
       setState(() {
         _branches = [];
         _loadingBranches = false;
+      });
+    }
+  }
+
+  Future<void> _loadSaleConfig() async {
+    setState(() => _loadingConfig = true);
+    try {
+      final config = await getAgentSaleConfig();
+      if (!mounted) return;
+      final rawChannels = config['regular_channels'];
+      final rawWatu = config['watu_channel'];
+      setState(() {
+        _regularChannels = rawChannels is List
+            ? rawChannels.cast<Map<String, dynamic>>()
+            : [];
+        _watuChannel = rawWatu is Map<String, dynamic> ? rawWatu : null;
+        _loadingConfig = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _regularChannels = [];
+        _watuChannel = null;
+        _loadingConfig = false;
       });
     }
   }
@@ -378,6 +418,11 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
       setState(() => _error = 'Enter a valid selling price.');
       return;
     }
+    // Sell tab requires a channel to be selected
+    if (!credit && _selectedChannelId == null) {
+      setState(() => _error = 'Select a payment channel.');
+      return;
+    }
     final unitPrice = _unitPrice ?? 0.0;
     final pid = _device!['id'];
     final productListId = pid is int ? pid : (pid is num ? pid.toInt() : int.tryParse(pid.toString()));
@@ -391,6 +436,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     });
     try {
       if (credit) {
+        // Watu tab: backend auto-uses the admin-configured Watu default channel
         await sellDeviceCredit(
           productListId: productListId,
           customerName: customer,
@@ -427,7 +473,11 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
             : 'Sale recorded.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+<<<<<<< Updated upstream
             content: Text(msg),
+=======
+            content: const Text('Sale recorded.'),
+>>>>>>> Stashed changes
             behavior: SnackBarBehavior.floating,
             backgroundColor: successColor,
           ),
@@ -447,6 +497,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
         _kinPhoneController.clear();
         _descriptionController.clear();
         _priceController.clear();
+        _selectedChannelId = null;
       });
       await _loadAvailableProducts();
     } catch (e) {
@@ -742,6 +793,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
             ),
           ),
           if (!credit) ...[
+<<<<<<< Updated upstream
             const SizedBox(height: 16),
             if (_loadingChannels)
               const Padding(
@@ -751,6 +803,19 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                     height: 22,
                     width: 22,
                     child: CircularProgressIndicator(strokeWidth: 2),
+=======
+            // Sell tab: agent picks any payment channel
+            const SizedBox(height: 16),
+            if (_loadingConfig)
+              const LinearProgressIndicator()
+            else if (_regularChannels.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'No payment channels available. Ask admin to add channels.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+>>>>>>> Stashed changes
                   ),
                 ),
               )
@@ -759,6 +824,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 value: _selectedChannelId,
                 decoration: const InputDecoration(
                   labelText: 'Payment channel',
+<<<<<<< Updated upstream
                   hintText: 'Configured default channel',
                   prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
                 ),
@@ -776,9 +842,68 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 onChanged: _paymentChannels.length <= 1
                     ? null
                     : (v) => setState(() => _selectedChannelId = v),
+=======
+                  hintText: 'Select channel',
+                  prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('-- Select channel --'),
+                  ),
+                  ..._regularChannels.map((ch) {
+                    final id = ch['id'];
+                    final cid = id is int ? id : (id is num ? id.toInt() : int.tryParse(id.toString()));
+                    return DropdownMenuItem<int?>(
+                      value: cid,
+                      child: Text(ch['name']?.toString() ?? '—'),
+                    );
+                  }),
+                ],
+                onChanged: (v) => setState(() => _selectedChannelId = v),
+>>>>>>> Stashed changes
               ),
           ],
           if (credit) ...[
+            // Watu tab: show admin-configured default channel (auto-used, not selectable)
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.account_balance_wallet_outlined,
+                      size: 20, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Payment channel',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            )),
+                        const SizedBox(height: 2),
+                        Text(
+                          _watuChannel != null
+                              ? (_watuChannel!['name']?.toString() ?? 'Watu')
+                              : 'Default Watu channel (set by admin)',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.lock_outline_rounded,
+                      size: 16, color: theme.colorScheme.onSurfaceVariant),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _customerPhoneController,
