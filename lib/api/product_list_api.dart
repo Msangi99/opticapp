@@ -107,13 +107,7 @@ Future<Map<String, dynamic>> sellDevice({
     'customer_name': customerName,
     'selling_price': sellingPrice,
   };
-<<<<<<< Updated upstream
-  if (paymentOptionId != null) {
-    body['payment_option_id'] = paymentOptionId;
-  }
-=======
   if (paymentOptionId != null) body['payment_option_id'] = paymentOptionId;
->>>>>>> Stashed changes
   final res = await apiPost('/agent/sell', body);
   final data = jsonDecode(res.body) as Map<String, dynamic>;
   if (res.statusCode != 201) throw Exception(data['message']?.toString() ?? 'Sale failed');

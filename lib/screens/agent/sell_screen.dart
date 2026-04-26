@@ -37,14 +37,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   bool _selling = false;
   bool _loadingProducts = false;
   late TabController _tabController;
-<<<<<<< Updated upstream
   bool _scanning = false;
-
-  // Payment channels for the Sell tab
-  List<Map<String, dynamic>> _paymentChannels = [];
-  int? _selectedChannelId;
-  bool _loadingChannels = false;
-=======
 
   // Payment channel state
   List<Map<String, dynamic>> _regularChannels = [];
@@ -57,7 +50,6 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   );
   DateTime? _lastScanTime;
   static const _scanCooldown = Duration(seconds: 2);
->>>>>>> Stashed changes
 
   // Lead tab (customer need)
   List<Map<String, dynamic>> _categories = [];
@@ -78,30 +70,9 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     _tabController = TabController(length: 3, vsync: this);
     _priceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
-    _loadPaymentChannels();
     _loadCategoriesForNeed();
     _loadBranchesForLead();
     _loadSaleConfig();
-  }
-
-  Future<void> _loadPaymentChannels() async {
-    setState(() => _loadingChannels = true);
-    try {
-      final list = await getAgentPaymentOptions();
-      if (!mounted) return;
-      final defaultId = list.isNotEmpty ? _parseIntId(list.first['id']) : null;
-      setState(() {
-        _paymentChannels = list;
-        _selectedChannelId = defaultId;
-        _loadingChannels = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _paymentChannels = [];
-        _loadingChannels = false;
-      });
-    }
   }
 
   Future<void> _loadBranchesForLead() async {
@@ -134,6 +105,9 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
             ? rawChannels.cast<Map<String, dynamic>>()
             : [];
         _watuChannel = rawWatu is Map<String, dynamic> ? rawWatu : null;
+        _selectedChannelId = _regularChannels.isNotEmpty
+            ? _parseIntId(_regularChannels.first['id'])
+            : null;
         _loadingConfig = false;
       });
     } catch (_) {
@@ -464,8 +438,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
           paymentOptionId: _selectedChannelId,
         );
         if (!mounted) return;
-        final channelName = _paymentChannels
-            .where((c) => c['id'] == _selectedChannelId)
+        final channelName = _regularChannels
+            .where((c) => _parseIntId(c['id']) == _selectedChannelId)
             .map((c) => c['name']?.toString() ?? '')
             .firstOrNull;
         final msg = channelName != null && channelName.isNotEmpty
@@ -473,11 +447,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
             : 'Sale recorded.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-<<<<<<< Updated upstream
             content: Text(msg),
-=======
-            content: const Text('Sale recorded.'),
->>>>>>> Stashed changes
             behavior: SnackBarBehavior.floating,
             backgroundColor: successColor,
           ),
@@ -490,14 +460,13 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
         _selectedProductId = null;
         _device = null;
         _selectedChannelId =
-            _paymentChannels.isNotEmpty ? _parseIntId(_paymentChannels.first['id']) : null;
+            _regularChannels.isNotEmpty ? _parseIntId(_regularChannels.first['id']) : null;
         _customerController.clear();
         _customerPhoneController.clear();
         _kinNameController.clear();
         _kinPhoneController.clear();
         _descriptionController.clear();
         _priceController.clear();
-        _selectedChannelId = null;
       });
       await _loadAvailableProducts();
     } catch (e) {
@@ -697,7 +666,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                       unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
                       tabs: const [
                         Tab(text: 'Sell'),
-                        Tab(text: 'Watu'),
+                        Tab(text: 'Credit Sale'),
                         Tab(text: 'Lead'),
                       ],
                     ),
@@ -793,17 +762,6 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
             ),
           ),
           if (!credit) ...[
-<<<<<<< Updated upstream
-            const SizedBox(height: 16),
-            if (_loadingChannels)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Center(
-                  child: SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-=======
             // Sell tab: agent picks any payment channel
             const SizedBox(height: 16),
             if (_loadingConfig)
@@ -815,7 +773,6 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                   'No payment channels available. Ask admin to add channels.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.error,
->>>>>>> Stashed changes
                   ),
                 ),
               )
@@ -824,25 +781,6 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 value: _selectedChannelId,
                 decoration: const InputDecoration(
                   labelText: 'Payment channel',
-<<<<<<< Updated upstream
-                  hintText: 'Configured default channel',
-                  prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
-                ),
-                items: [
-                  ..._paymentChannels.map((ch) {
-                    final id = ch['id'];
-                    final intId = id is int ? id : (id is num ? id.toInt() : int.tryParse(id.toString()));
-                    if (intId == null) return null;
-                    return DropdownMenuItem<int?>(
-                      value: intId,
-                      child: Text(ch['name']?.toString() ?? '—'),
-                    );
-                  }).whereType<DropdownMenuItem<int?>>(),
-                ],
-                onChanged: _paymentChannels.length <= 1
-                    ? null
-                    : (v) => setState(() => _selectedChannelId = v),
-=======
                   hintText: 'Select channel',
                   prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
                 ),
@@ -861,7 +799,6 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                   }),
                 ],
                 onChanged: (v) => setState(() => _selectedChannelId = v),
->>>>>>> Stashed changes
               ),
           ],
           if (credit) ...[
