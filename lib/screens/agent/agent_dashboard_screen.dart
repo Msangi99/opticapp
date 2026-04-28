@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../api/agent_dashboard_api.dart';
 import '../../api/invoice_api.dart';
+import '../admin/widgets/admin_page_ui.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
 
@@ -118,53 +119,24 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
         foregroundColor: Colors.white,
       ),
       body: _loading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading…', style: TextStyle(color: Color(0xFF6B7280))),
-                ],
-              ),
-            )
+          ? const AdminPageLoading()
           : RefreshIndicator(
               onRefresh: _load,
               child: _error != null
-                  ? SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.errorContainer.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(_error!, style: errorStyle()),
-                        ),
-                      ),
-                    )
+                  ? AdminPageError(message: _error!)
                   : _data == null
-                  ? const Center(child: Text('No data available'))
+                  ? const AdminPageEmpty(
+                      icon: Icons.dashboard_outlined,
+                      title: 'No data available',
+                    )
                   : SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Products assigned to you. Record a sale when you sell to a customer.',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                          const SizedBox(height: 20),
+                          _buildHeroPanel(),
+                          const SizedBox(height: 22),
                           _buildStatsGrid(),
                           const SizedBox(height: 24),
                           _buildAssignments(),
@@ -175,6 +147,74 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                       ),
                     ),
             ),
+    );
+  }
+
+  Widget _buildHeroPanel() {
+    final stats = _data?['stats'] as Map<String, dynamic>? ?? {};
+    final totalAssigned = stats['total_assigned'] as int? ?? 0;
+    final totalSold = stats['total_sold'] as int? ?? 0;
+    final totalRemaining = stats['total_remaining'] as int? ?? 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Performance Overview',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Products assigned to you. Record each sale as soon as you sell to a customer.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.82),
+                ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _heroBadge('Assigned $totalAssigned'),
+              _heroBadge('Sold $totalSold'),
+              _heroBadge('Remaining $totalRemaining'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -198,32 +238,32 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
           children: [
             Expanded(
               child: _StatCard(
-                icon: Icons.inventory_2_outlined,
-                iconColor: Colors.blue,
-                label: 'Assigned',
-                value: totalAssigned.toString(),
-                onTap: () => _openInventorySheet(_InventoryKind.assigned),
-              ),
+                  compact: true,
+                  icon: Icons.inventory_2_outlined,
+                  iconColor: Colors.blue,
+                  label: 'Assigned',
+                  value: totalAssigned.toString(),
+                  onTap: () => _openInventorySheet(_InventoryKind.assigned)),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: _StatCard(
-                icon: Icons.check_circle_outline_rounded,
-                iconColor: Colors.green,
-                label: 'Sold',
-                value: totalSold.toString(),
-                onTap: () => _openInventorySheet(_InventoryKind.sold),
-              ),
+                  compact: true,
+                  icon: Icons.check_circle_outline_rounded,
+                  iconColor: Colors.green,
+                  label: 'Sold',
+                  value: totalSold.toString(),
+                  onTap: () => _openInventorySheet(_InventoryKind.sold)),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: _StatCard(
-                icon: Icons.pending_outlined,
-                iconColor: Colors.orange,
-                label: 'Remaining',
-                value: totalRemaining.toString(),
-                onTap: () => _openInventorySheet(_InventoryKind.remaining),
-              ),
+                  compact: true,
+                  icon: Icons.pending_outlined,
+                  iconColor: Colors.orange,
+                  label: 'Remaining',
+                  value: totalRemaining.toString(),
+                  onTap: () => _openInventorySheet(_InventoryKind.remaining)),
             ),
           ],
         ),
@@ -354,7 +394,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                                 ),
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
         ),
@@ -400,7 +440,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                           (s['total_selling_value'] as num?)?.toDouble() ?? 0.0;
                       final date = s['date'] as String?;
 
-                      return Container(
+                      return InkWell(
+                        onTap: () => Navigator.pushNamed(context, '/agent/sales/detail', arguments: {'id': s['id']}),
+                        child: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -470,8 +512,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                             ),
                           ],
                         ),
+                        ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
         ),
@@ -486,6 +529,7 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final VoidCallback onTap;
+  final bool compact;
 
   const _StatCard({
     required this.icon,
@@ -493,6 +537,7 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onTap,
+    this.compact = false,
   });
 
   @override
@@ -504,7 +549,7 @@ class _StatCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: radius,
         child: Ink(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(compact ? 12 : 16),
           decoration: sectionCardDecoration(
             context,
           ).copyWith(borderRadius: radius),
@@ -519,7 +564,7 @@ class _StatCard extends StatelessWidget {
                       color: iconColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, color: iconColor, size: 24),
+                    child: Icon(icon, color: iconColor, size: compact ? 20 : 24),
                   ),
                   const Spacer(),
                   Icon(
@@ -531,18 +576,20 @@ class _StatCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: compact ? 8 : 12),
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: compact ? 11 : null,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: compact ? 2 : 4),
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
+                  fontSize: compact ? 20 : null,
                 ),
               ),
             ],

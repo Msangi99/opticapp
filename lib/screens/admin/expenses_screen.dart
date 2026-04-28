@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../api/expenses_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'expense_detail_screen.dart';
+import 'expense_form_screen.dart';
+import 'widgets/admin_page_ui.dart';
 
 /// Admin: list expenses.
 class ExpensesScreen extends StatefulWidget {
@@ -52,60 +54,26 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Expenses',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.add_rounded),
+          onPressed: () async {
+            final changed = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(builder: (_) => const ExpenseFormScreen()),
+            );
+            if (changed == true) _load();
+          },
+        ),
+      ],
       body: _loading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading…', style: TextStyle(color: Color(0xFF6B7280))),
-                ],
-              ),
-            )
+          ? const AdminPageLoading()
           : RefreshIndicator(
               onRefresh: _load,
               child: _error != null
-                  ? SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(_error!, style: errorStyle()),
-                        ),
-                      ),
-                    )
+                  ? AdminPageError(message: _error!)
                   : _list.isEmpty
-                      ? SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          child: SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.5,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.payments_outlined,
-                                    size: 64,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No expenses yet',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
+                      ? const AdminPageEmpty(icon: Icons.payments_outlined, title: 'No expenses yet')
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: _list.length,
@@ -115,11 +83,22 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             final amount = (e['amount'] as num?)?.toDouble() ?? 0.0;
                             final date = e['date'] as String? ?? '–';
                             final channel = e['payment_option_name'] as String? ?? '–';
+                            final id = (e['id'] as num?)?.toInt();
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(16),
-                              decoration: sectionCardDecoration(context),
-                              child: Row(
+                              child: AdminSectionCard(
+                                padding: const EdgeInsets.all(16),
+                                child: InkWell(
+                                  onTap: id == null
+                                      ? null
+                                      : () async {
+                                          final changed = await Navigator.push<bool>(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => ExpenseDetailScreen(expenseId: id)),
+                                          );
+                                          if (changed == true) _load();
+                                        },
+                                  child: Row(
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.all(10),
@@ -150,14 +129,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                       ],
                                     ),
                                   ),
-                                  Text(
-                                    _formatCurrency(amount),
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
+                                    Text(
+                                      _formatCurrency(amount),
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(context).colorScheme.primary,
+                                          ),
+                                    ),
+                                  ],
                                   ),
-                                ],
+                                ),
                               ),
                             );
                           },

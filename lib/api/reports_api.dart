@@ -7,3 +7,12 @@ Future<Map<String, dynamic>> getReports() async {
   if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Failed to load reports');
   return data?['data'] as Map<String, dynamic>? ?? {};
 }
+
+Future<Map<String, dynamic>> getReportBranchDetail(int branchId) async {
+  final res = await apiGet('/admin/reports/branches/$branchId');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load branch report');
+  }
+  return data?['data'] as Map<String, dynamic>? ?? {};
+}

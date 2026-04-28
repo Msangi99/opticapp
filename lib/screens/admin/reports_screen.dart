@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../../api/reports_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'report_branch_detail_screen.dart';
+import 'widgets/admin_page_ui.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -41,9 +43,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return AdminScaffold(
       title: 'Reports',
       body: _loading
-          ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Loading…', style: TextStyle(color: Color(0xFF6B7280)))]))
+          ? const AdminPageLoading()
           : _error != null
-              ? SingleChildScrollView(physics: const AlwaysScrollableScrollPhysics(), child: Padding(padding: const EdgeInsets.all(20), child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)), child: Text(_error!, style: errorStyle()))))
+              ? AdminPageError(message: _error!)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: SingleChildScrollView(
@@ -82,6 +84,42 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             ],
                           ),
                         )).toList(),
+                        const SizedBox(height: 20),
+                        Text('Branches', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        ...(() {
+                          final rows = _data?['branches_business'];
+                          if (rows is! List) return <Widget>[const Text('No branch data')];
+                          return rows.map<Widget>((raw) {
+                            final b = raw as Map<String, dynamic>;
+                            final branchName = b['name']?.toString() ?? 'Branch';
+                            final branchId = (b['branch_id'] as num?)?.toInt();
+                            final purchaseTotal = (b['purchase_total'] as num?)?.toDouble() ?? 0;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: AdminSectionCard(
+                                child: InkWell(
+                                  onTap: branchId == null
+                                      ? null
+                                      : () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ReportBranchDetailScreen(branchId: branchId),
+                                            ),
+                                          ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(child: Text(branchName, style: const TextStyle(fontWeight: FontWeight.w600))),
+                                      Text(_formatCurrency(purchaseTotal)),
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.chevron_right_rounded),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList();
+                        })(),
                       ],
                     ),
                   ),

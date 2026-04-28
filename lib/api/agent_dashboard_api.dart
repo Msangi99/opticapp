@@ -32,3 +32,23 @@ Future<List<Map<String, dynamic>>> getAvailableProducts() async {
   if (list == null || list is! List) return [];
   return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
 }
+
+Future<List<Map<String, dynamic>>> getAgentSalesHistory() async {
+  final res = await apiGet('/agent/sales');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load sales');
+  }
+  final list = data?['data'];
+  if (list == null || list is! List) return [];
+  return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
+}
+
+Future<Map<String, dynamic>> getAgentSaleDetail(int id) async {
+  final res = await apiGet('/agent/sales/$id');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load sale detail');
+  }
+  return data?['data'] as Map<String, dynamic>? ?? {};
+}

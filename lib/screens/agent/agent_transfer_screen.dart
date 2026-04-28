@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../api/agent_dashboard_api.dart';
 import '../../api/agent_transfer_api.dart';
 import '../../api/client.dart';
-import '../../theme/app_theme.dart';
+import '../admin/widgets/admin_page_ui.dart';
 import 'agent_scaffold.dart';
 
 class AgentTransferScreen extends StatefulWidget {
@@ -113,6 +113,18 @@ class _AgentTransferScreenState extends State<AgentTransferScreen> {
       setState(() => _error = 'Select agent, product, and at least one device.');
       return;
     }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm transfer request'),
+        content: Text('Submit transfer of ${_selectedIds.length} device(s)?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Submit')),
+        ],
+      ),
+    );
+    if (ok != true) return;
     setState(() {
       _submitting = true;
       _error = null;
@@ -139,17 +151,9 @@ class _AgentTransferScreenState extends State<AgentTransferScreen> {
   Widget build(BuildContext context) {
     return AgentScaffold(
       title: 'Transfer devices',
+      showDrawer: true,
       body: _loadingMeta
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading…', style: TextStyle(color: Color(0xFF6B7280))),
-                ],
-              ),
-            )
+          ? const AdminPageLoading()
           : RefreshIndicator(
               onRefresh: _loadMeta,
               child: SingleChildScrollView(
@@ -166,18 +170,7 @@ class _AgentTransferScreenState extends State<AgentTransferScreen> {
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                       ),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(_error!, style: errorStyle()),
-                        ),
-                      ),
+                    if (_error != null) AdminPageError(message: _error!),
                     Text('Receiving agent', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(

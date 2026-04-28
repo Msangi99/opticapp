@@ -21,6 +21,16 @@ Future<List<Map<String, dynamic>>> getPurchaseItems(int purchaseId) async {
   return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
 }
 
+/// Get one purchase details (website-aligned fields + payment history).
+Future<Map<String, dynamic>> getPurchaseDetails(int purchaseId) async {
+  final res = await apiGet('/admin/purchases/$purchaseId');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load purchase details');
+  }
+  return data?['data'] as Map<String, dynamic>? ?? {};
+}
+
 /// List purchases (by name) with category and model for admin Add Product.
 Future<List<Map<String, dynamic>>> getPurchasesForAddProduct() async {
   final res = await apiGet('/admin/purchases/for-add-product');

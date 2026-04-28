@@ -36,6 +36,25 @@ class _DistributionScreenState extends State<DistributionScreen> {
 
   String _formatCurrency(double v) => '${NumberFormat('#,##0').format(v)} TZS';
 
+  int? _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  void _openDistribution(Map<String, dynamic> sale) {
+    final id = _asInt(sale['id']);
+    if (id == null) return;
+    Navigator.pushNamed(
+      context,
+      '/admin/stock/distribution/info',
+      arguments: {
+        ...sale,
+        'id': id,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdminScaffold(
@@ -58,32 +77,48 @@ class _DistributionScreenState extends State<DistributionScreen> {
                           final total = (s['total_selling_value'] as num?)?.toDouble() ?? 0.0;
                           final profit = (s['profit'] as num?)?.toDouble() ?? 0.0;
                           final status = s['status'] as String? ?? 'pending';
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: sectionCardDecoration(context),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => _openDistribution(s),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
+                                decoration: sectionCardDecoration(context),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.teal.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(Icons.store_rounded, color: Colors.teal.shade700, size: 20)),
-                                    const SizedBox(width: 12),
-                                    Expanded(child: Text(dealerName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
-                                    Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)), child: Text((status).toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.orange.shade700))),
+                                    Row(
+                                      children: [
+                                        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.teal.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(Icons.store_rounded, color: Colors.teal.shade700, size: 20)),
+                                        const SizedBox(width: 12),
+                                        Expanded(child: Text(dealerName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
+                                        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)), child: Text((status).toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.orange.shade700))),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(productName, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(_formatCurrency(total), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                                        Text('Profit: ${_formatCurrency(profit)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.green.shade700, fontWeight: FontWeight.w600)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 20,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                Text(productName, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(_formatCurrency(total), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-                                    Text('Profit: ${_formatCurrency(profit)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.green.shade700, fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                              ],
+                              ),
                             ),
                           );
                         },

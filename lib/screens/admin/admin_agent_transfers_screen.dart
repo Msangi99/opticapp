@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../api/admin_agent_transfers_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_agent_transfer_detail_screen.dart';
 import 'admin_scaffold.dart';
+import 'widgets/admin_page_ui.dart';
 
 class AdminAgentTransfersScreen extends StatefulWidget {
   const AdminAgentTransfersScreen({super.key});
@@ -16,6 +17,14 @@ class _AdminAgentTransfersScreenState extends State<AdminAgentTransfersScreen> {
   bool _loading = true;
   String? _error;
   String? _statusFilter;
+  String _formatDate(String? value) {
+    if (value == null || value.trim().isEmpty) return '–';
+    try {
+      return DateFormat('MMM dd, yyyy').format(DateTime.parse(value));
+    } catch (_) {
+      return value;
+    }
+  }
 
   @override
   void initState() {
@@ -76,31 +85,15 @@ class _AdminAgentTransfersScreenState extends State<AdminAgentTransfersScreen> {
           ),
           Expanded(
             child: _loading
-                ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Loading…', style: TextStyle(color: Color(0xFF6B7280)))]))
+                ? const AdminPageLoading()
                 : _error != null
-                    ? SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(_error!, style: errorStyle()),
-                          ),
-                        ),
-                      )
+                    ? AdminPageError(message: _error!)
                     : RefreshIndicator(
                         onRefresh: _load,
                         child: _list.isEmpty
-                            ? ListView(
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                children: const [
-                                  SizedBox(height: 100),
-                                  Center(child: Text('No transfers.', style: TextStyle(color: Color(0xFF6B7280)))),
-                                ],
+                            ? const AdminPageEmpty(
+                                icon: Icons.swap_horiz_rounded,
+                                title: 'No transfers found',
                               )
                             : ListView.builder(
                                 padding: const EdgeInsets.all(16),
@@ -112,7 +105,13 @@ class _AdminAgentTransfersScreenState extends State<AdminAgentTransfersScreen> {
                                   final from = t['from_agent'] as Map<String, dynamic>?;
                                   final to = t['to_agent'] as Map<String, dynamic>?;
                                   final status = t['status'] as String? ?? '';
+                                  final createdAt = _formatDate(t['created_at']?.toString());
                                   final cnt = t['items_count'] as int? ?? (t['items_count'] is num ? (t['items_count'] as num).toInt() : 0);
+                                  final statusColor = status == 'approved'
+                                      ? const Color(0xFF047857)
+                                      : status == 'rejected'
+                                          ? const Color(0xFFB91C1C)
+                                          : const Color(0xFFB45309);
                                   return InkWell(
                                     onTap: tid == null
                                         ? null
@@ -124,9 +123,9 @@ class _AdminAgentTransfersScreenState extends State<AdminAgentTransfersScreen> {
                                             ).then((_) => _load()),
                                     child: Container(
                                       margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: sectionCardDecoration(context),
-                                      child: Row(
+                                      child: AdminSectionCard(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Row(
                                         children: [
                                           Expanded(
                                             child: Column(
@@ -137,12 +136,18 @@ class _AdminAgentTransfersScreenState extends State<AdminAgentTransfersScreen> {
                                                   style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                                                 ),
                                                 const SizedBox(height: 4),
-                                                Text('$cnt device(s) · $status', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                                Text(
+                                                  '$cnt device(s) · $createdAt',
+                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                                ),
                                               ],
                                             ),
                                           ),
+                                          StatusChip(label: status, color: statusColor),
+                                          const SizedBox(width: 8),
                                           const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
                                         ],
+                                        ),
                                       ),
                                     ),
                                   );

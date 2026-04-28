@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../api/admin_agent_transfers_api.dart';
 import '../../api/client.dart';
+import '../../api/orders_api.dart';
 
 /// Brand colors matching Laravel admin.
 const Color _kBrandDark = Color(0xFF232F3E);
 const Color _kBrandOrange = Color(0xFFFA8900);
-const Color _kDrawerBg = Color(0xFFF8FAFC);
-const Color _kSectionLabel = Color(0xFF64748B);
+const Color _kDrawerCanvas = Color(0xFFF1F5F9);
+const Color _kPanel = Color(0xFFFFFFFF);
+const Color _kPanelBorder = Color(0xFFE2E8F0);
+const Color _kTextPrimary = Color(0xFF0F172A);
+const Color _kTextMuted = Color(0xFF64748B);
 
 /// Admin scaffold. Drawer only on homepage (dashboard); other pages get back arrow.
 class AdminScaffold extends StatefulWidget {
@@ -52,159 +57,208 @@ class _AdminScaffoldState extends State<AdminScaffold> {
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: _kDrawerCanvas,
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: _kBrandDark,
         elevation: 0,
+        scrolledUnderElevation: 0.5,
+        shadowColor: Colors.black.withValues(alpha: 0.08),
         surfaceTintColor: Colors.transparent,
         title: Text(
           widget.title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-            color: Color(0xFF232F3E),
-          ),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: -0.25,
+                color: _kTextPrimary,
+              ),
         ),
         leading: leading,
         actions: widget.actions,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(
+            height: 1,
+            thickness: 1,
+            color: _kPanelBorder.withValues(alpha: 0.95),
+          ),
+        ),
       ),
-      drawer: widget.showDrawer ? _AdminDrawer() : null,
+      drawer: widget.showDrawer ? const _AdminDrawer() : null,
       body: widget.body,
       floatingActionButton: widget.floatingActionButton,
     );
   }
 }
 
-class _AdminDrawer extends StatelessWidget {
+class _NavItem {
+  const _NavItem({required this.icon, required this.label, required this.route, this.badgeCount});
+
+  final IconData icon;
+  final String label;
+  final String route;
+  final int? badgeCount;
+}
+
+class _AdminDrawer extends StatefulWidget {
+  const _AdminDrawer();
+
+  @override
+  State<_AdminDrawer> createState() => _AdminDrawerState();
+}
+
+class _AdminDrawerState extends State<_AdminDrawer> {
+  int _pendingOrders = 0;
+  int _pendingTransfers = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBadges();
+  }
+
+  Future<void> _loadBadges() async {
+    try {
+      final results = await Future.wait<int>([
+        getPendingOrdersCount(),
+        getPendingAdminAgentTransfersCount(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _pendingOrders = results[0];
+        _pendingTransfers = results[1];
+      });
+    } catch (_) {
+      // Keep drawer usable even if badge counters fail.
+    }
+  }
+
+  static const _sectionSpacing = 14.0;
+
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    void navigate(String routeName) {
+      Navigator.pop(context);
+      Navigator.pushNamed(context, routeName);
+    }
+
     return Drawer(
-      backgroundColor: _kDrawerBg,
+      width: 300,
+      backgroundColor: _kDrawerCanvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
+      ),
       child: SafeArea(
         child: Column(
           children: [
-            _DrawerHeader(),
+            const _DrawerHeader(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                 children: [
-                  _SectionLabel('Dashboard'),
-                  _DrawerTile(
-                    icon: Icons.dashboard_rounded,
-                    label: 'Main Dashboard',
-                    onTap: () => _navigate(context, '/admin/dashboard'),
+                  _DrawerSectionCard(
+                    title: 'Dashboard',
+                    primary: primary,
+                    items: const [
+                      _NavItem(icon: Icons.dashboard_rounded, label: 'Main dashboard', route: '/admin/dashboard'),
+                    ],
+                    onNavigate: navigate,
                   ),
-                  const SizedBox(height: 16),
-                  _SectionLabel('Management'),
-                  _DrawerTile(
-                    icon: Icons.category_rounded,
-                    label: 'Categories',
-                    onTap: () => _navigate(context, '/admin/categories'),
+                  const SizedBox(height: _sectionSpacing),
+                  _DrawerSectionCard(
+                    title: 'Management',
+                    primary: primary,
+                    items: [
+                      _NavItem(icon: Icons.category_rounded, label: 'Categories', route: '/admin/categories'),
+                      _NavItem(
+                        icon: Icons.shopping_cart_rounded,
+                        label: 'Orders',
+                        route: '/admin/orders',
+                        badgeCount: _pendingOrders,
+                      ),
+                      _NavItem(icon: Icons.people_rounded, label: 'Customers', route: '/admin/customers'),
+                      _NavItem(icon: Icons.store_rounded, label: 'Dealers', route: '/admin/dealers'),
+                      _NavItem(icon: Icons.person_search_rounded, label: 'Agents', route: '/admin/agents'),
+                      _NavItem(
+                        icon: Icons.assignment_ind_rounded,
+                        label: 'Assign devices to agent',
+                        route: '/admin/agents/assign-products',
+                      ),
+                    ],
+                    onNavigate: navigate,
                   ),
-                  _DrawerTile(
-                    icon: Icons.shopping_cart_rounded,
-                    label: 'Orders',
-                    onTap: () => _navigate(context, '/admin/orders'),
+                  const SizedBox(height: _sectionSpacing),
+                  _DrawerSectionCard(
+                    title: 'Stock',
+                    primary: primary,
+                    items: [
+                      _NavItem(icon: Icons.inventory_2_rounded, label: 'Stocks', route: '/admin/stocks'),
+                      _NavItem(icon: Icons.receipt_long_rounded, label: 'Purchases', route: '/admin/purchases'),
+                      _NavItem(icon: Icons.local_shipping_rounded, label: 'Distribution', route: '/admin/stock/distribution'),
+                      _NavItem(icon: Icons.pending_actions_rounded, label: 'Pending sales', route: '/admin/stock/pending-sales'),
+                      _NavItem(
+                        icon: Icons.swap_horiz_rounded,
+                        label: 'Agent transfers',
+                        route: '/admin/stock/agent-transfers',
+                        badgeCount: _pendingTransfers,
+                      ),
+                      _NavItem(icon: Icons.alt_route_rounded, label: 'Branch transfer', route: '/admin/stock/branch-transfer'),
+                      _NavItem(icon: Icons.person_pin_circle_rounded, label: 'Agent sales', route: '/admin/stock/agent-sales'),
+                      _NavItem(icon: Icons.add_box_rounded, label: 'Add product', route: '/admin/add-product'),
+                    ],
+                    onNavigate: navigate,
                   ),
-                  _DrawerTile(
-                    icon: Icons.people_rounded,
-                    label: 'Customers',
-                    onTap: () => _navigate(context, '/admin/customers'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.store_rounded,
-                    label: 'Dealers',
-                    onTap: () => _navigate(context, '/admin/dealers'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.person_search_rounded,
-                    label: 'Agents',
-                    onTap: () => _navigate(context, '/admin/agents'),
-                  ),
-                  const SizedBox(height: 16),
-                  _SectionLabel('Stock'),
-                  _DrawerTile(
-                    icon: Icons.inventory_2_rounded,
-                    label: 'Stocks',
-                    onTap: () => _navigate(context, '/admin/stocks'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.receipt_long_rounded,
-                    label: 'Purchases',
-                    onTap: () => _navigate(context, '/admin/stocks'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.local_shipping_rounded,
-                    label: 'Distribution',
-                    onTap: () => _navigate(context, '/admin/stock/distribution'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.pending_actions_rounded,
-                    label: 'Pending Sales',
-                    onTap: () => _navigate(context, '/admin/stock/pending-sales'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.swap_horiz_rounded,
-                    label: 'Agent transfers',
-                    onTap: () => _navigate(context, '/admin/stock/agent-transfers'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.alt_route_rounded,
-                    label: 'Branch transfer',
-                    onTap: () => _navigate(context, '/admin/stock/branch-transfer'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.person_pin_circle_rounded,
-                    label: 'Agent Sales',
-                    onTap: () => _navigate(context, '/admin/stock/agent-sales'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.add_box_rounded,
-                    label: 'Add Product',
-                    onTap: () => _navigate(context, '/admin/add-product'),
-                  ),
-                  const SizedBox(height: 16),
-                  _SectionLabel('Operations'),
-                  _DrawerTile(
-                    icon: Icons.account_balance_wallet_rounded,
-                    label: 'Channels',
-                    onTap: () => _navigate(context, '/admin/channels'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.payments_rounded,
-                    label: 'Expenses',
-                    onTap: () => _navigate(context, '/admin/expenses'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.assessment_rounded,
-                    label: 'Reports',
-                    onTap: () => _navigate(context, '/admin/reports'),
-                  ),
-                  _DrawerTile(
-                    icon: Icons.settings_rounded,
-                    label: 'Settings',
-                    onTap: () => _navigate(context, '/admin/settings'),
+                  const SizedBox(height: _sectionSpacing),
+                  _DrawerSectionCard(
+                    title: 'Operations',
+                    primary: primary,
+                    items: const [
+                      _NavItem(icon: Icons.account_balance_wallet_rounded, label: 'Channels', route: '/admin/channels'),
+                      _NavItem(icon: Icons.payments_rounded, label: 'Expenses', route: '/admin/expenses'),
+                      _NavItem(icon: Icons.assessment_rounded, label: 'Reports', route: '/admin/reports'),
+                      _NavItem(icon: Icons.settings_rounded, label: 'Settings', route: '/admin/settings'),
+                    ],
+                    onNavigate: navigate,
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
-            _DrawerTile(
-              icon: Icons.logout_rounded,
-              label: 'Log out',
-              onTap: () => _logout(context),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _kPanel,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _kPanelBorder.withValues(alpha: 0.9)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: _DrawerNavRow(
+                    icon: Icons.logout_rounded,
+                    label: 'Log out',
+                    primary: primary,
+                    iconTint: const Color(0xFFDC2626),
+                    iconBackground: const Color(0xFFFEE2E2),
+                    showChevron: false,
+                    onTap: () => _logout(context),
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
           ],
         ),
       ),
     );
-  }
-
-  void _navigate(BuildContext context, String routeName) {
-    Navigator.pop(context); // close drawer
-    Navigator.pushNamed(context, routeName); // push so back arrow returns to dashboard
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -215,15 +269,190 @@ class _AdminDrawer extends StatelessWidget {
   }
 }
 
+class _DrawerSectionCard extends StatelessWidget {
+  const _DrawerSectionCard({
+    required this.title,
+    required this.items,
+    required this.onNavigate,
+    required this.primary,
+  });
+
+  final String title;
+  final List<_NavItem> items;
+  final void Function(String route) onNavigate;
+  final Color primary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.85,
+                  color: _kTextMuted,
+                  fontSize: 11,
+                ),
+          ),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: _kPanel,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _kPanelBorder.withValues(alpha: 0.9)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Column(
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      indent: 60,
+                      color: _kPanelBorder.withValues(alpha: 0.65),
+                    ),
+                  _DrawerNavRow(
+                    icon: items[i].icon,
+                    label: items[i].label,
+                    primary: primary,
+                    badgeCount: items[i].badgeCount,
+                    onTap: () => onNavigate(items[i].route),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DrawerNavRow extends StatelessWidget {
+  const _DrawerNavRow({
+    required this.icon,
+    required this.label,
+    required this.primary,
+    required this.onTap,
+    this.iconTint,
+    this.iconBackground,
+    this.showChevron = true,
+    this.badgeCount,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color primary;
+  final VoidCallback onTap;
+  final Color? iconTint;
+  final Color? iconBackground;
+  final bool showChevron;
+  final int? badgeCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = iconTint ?? primary;
+    final bg = iconBackground ?? primary.withValues(alpha: 0.12);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: primary.withValues(alpha: 0.08),
+        highlightColor: primary.withValues(alpha: 0.05),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 21, color: fg),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.5,
+                        height: 1.25,
+                        color: _kTextPrimary,
+                        letterSpacing: -0.1,
+                      ),
+                ),
+              ),
+              if ((badgeCount ?? 0) > 0)
+                Container(
+                  margin: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDC2626).withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${badgeCount!}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFB91C1C),
+                    ),
+                  ),
+                ),
+              if (showChevron)
+                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DrawerHeader extends StatelessWidget {
+  const _DrawerHeader();
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-      decoration: const BoxDecoration(
-        color: _kBrandDark,
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12)),
+      margin: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E293B),
+            Color(0xFF0F172A),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,102 +462,43 @@ class _DrawerHeader extends StatelessWidget {
             children: [
               Text(
                 'opticedg',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: -0.5,
-                ),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.6,
+                      height: 1.1,
+                    ),
               ),
               Text(
                 'eafrica',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: _kBrandOrange,
-                  letterSpacing: -0.5,
-                ),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: _kBrandOrange,
+                      letterSpacing: -0.6,
+                      height: 1.1,
+                    ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: _kBrandOrange,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               'ADMIN',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: _kBrandDark,
-                letterSpacing: 0.8,
-              ),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: _kBrandDark,
+                    letterSpacing: 1.0,
+                  ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 6),
-      child: Text(
-        label.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: _kSectionLabel,
-          letterSpacing: 0.8,
-        ),
-      ),
-    );
-  }
-}
-
-class _DrawerTile extends StatelessWidget {
-  const _DrawerTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: _kBrandDark.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, size: 20, color: _kBrandDark),
-      ),
-      title: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: _kBrandDark,
-        ),
-      ),
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     );
   }
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../api/admin_branch_transfer_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'widgets/admin_page_ui.dart';
 
 class AdminBranchTransferLogsScreen extends StatefulWidget {
   const AdminBranchTransferLogsScreen({super.key});
@@ -14,6 +15,14 @@ class _AdminBranchTransferLogsScreenState extends State<AdminBranchTransferLogsS
   List<Map<String, dynamic>> _list = [];
   bool _loading = true;
   String? _error;
+  String _formatDate(String? value) {
+    if (value == null || value.trim().isEmpty) return '–';
+    try {
+      return DateFormat('MMM dd, yyyy HH:mm').format(DateTime.parse(value));
+    } catch (_) {
+      return value;
+    }
+  }
 
   @override
   void initState() {
@@ -47,18 +56,15 @@ class _AdminBranchTransferLogsScreenState extends State<AdminBranchTransferLogsS
     return AdminScaffold(
       title: 'Branch transfer history',
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AdminPageLoading()
           : _error != null
-              ? Padding(padding: const EdgeInsets.all(20), child: Text(_error!, style: errorStyle()))
+              ? AdminPageError(message: _error!)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: _list.isEmpty
-                      ? ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: const [
-                            SizedBox(height: 100),
-                            Center(child: Text('No history yet.', style: TextStyle(color: Color(0xFF6B7280)))),
-                          ],
+                      ? const AdminPageEmpty(
+                          icon: Icons.history_rounded,
+                          title: 'No history yet',
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
@@ -71,20 +77,21 @@ class _AdminBranchTransferLogsScreenState extends State<AdminBranchTransferLogsS
                             final to = l['to_branch'] as String? ?? '—';
                             final admin = l['admin'] as Map<String, dynamic>?;
                             final an = admin?['name'] as String? ?? '—';
-                            final when = l['created_at'] as String? ?? '';
+                            final when = _formatDate(l['created_at'] as String?);
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(14),
-                              decoration: sectionCardDecoration(context),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(imei, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w600)),
-                                  if (prod.isNotEmpty) Text(prod, style: Theme.of(context).textTheme.bodySmall),
-                                  const SizedBox(height: 4),
-                                  Text('$from → $to', style: Theme.of(context).textTheme.bodySmall),
-                                  Text('By $an · $when', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                                ],
+                              child: AdminSectionCard(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(imei, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w600)),
+                                    if (prod.isNotEmpty) KeyValueRow(label: 'Product', value: prod),
+                                    KeyValueRow(label: 'From', value: from),
+                                    KeyValueRow(label: 'To', value: to),
+                                    KeyValueRow(label: 'Admin', value: an),
+                                    KeyValueRow(label: 'When', value: when),
+                                  ],
+                                ),
                               ),
                             );
                           },

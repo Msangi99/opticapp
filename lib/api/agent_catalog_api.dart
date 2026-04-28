@@ -56,3 +56,23 @@ Future<void> submitAgentCustomerNeed({
     throw Exception(data['message']?.toString() ?? 'Submit failed');
   }
 }
+
+Future<List<Map<String, dynamic>>> getAgentCustomerNeeds() async {
+  final res = await apiGet('/agent/customer-needs');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load leads');
+  }
+  final list = data?['data'];
+  if (list == null || list is! List) return [];
+  return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
+}
+
+Future<Map<String, dynamic>> getAgentCustomerNeedDetail(int id) async {
+  final res = await apiGet('/agent/customer-needs/$id');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load lead detail');
+  }
+  return data?['data'] as Map<String, dynamic>? ?? {};
+}

@@ -37,6 +37,13 @@ class _AgentsScreenState extends State<AgentsScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Agents',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.assignment_ind_outlined),
+          tooltip: 'Assign devices to agent',
+          onPressed: () => Navigator.pushNamed(context, '/admin/agents/assign-products'),
+        ),
+      ],
       body: _buildBody(context),
     );
   }

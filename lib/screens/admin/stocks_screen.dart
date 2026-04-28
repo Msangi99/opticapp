@@ -3,9 +3,11 @@ import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 
-/// Stocks page: list of purchases (name, limit, available, status). Tap name → purchase detail.
+/// Stocks page: list of purchases (name, limit, available, status).
 class StocksScreen extends StatefulWidget {
-  const StocksScreen({super.key});
+  const StocksScreen({super.key, this.pageTitle = 'Stocks'});
+
+  final String pageTitle;
 
   @override
   State<StocksScreen> createState() => _StocksScreenState();
@@ -43,10 +45,32 @@ class _StocksScreenState extends State<StocksScreen> {
     }
   }
 
+  int? _parseInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  void _openPurchase(int id, String name) {
+    Navigator.pushNamed(
+      context,
+      '/admin/stocks/purchase',
+      arguments: {'id': id, 'name': name},
+    );
+  }
+
+  Color _statusColor(String status) {
+    final s = status.toLowerCase();
+    if (s == 'paid' || s == 'active' || s == 'available') return Colors.green;
+    if (s == 'partial' || s == 'low' || s == 'warning') return Colors.orange;
+    return Colors.red;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdminScaffold(
-      title: 'Stocks',
+      title: widget.pageTitle,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.pushNamed(context, '/admin/add-product'),
         icon: const Icon(Icons.add_box_rounded, color: Colors.black),
@@ -121,119 +145,70 @@ class _StocksScreenState extends State<StocksScreen> {
                               itemBuilder: (context, index) {
                                 final p = _purchases[index];
                                 final name = p['name'] as String? ?? 'Purchase #${p['id']}';
-                                final limit = p['limit']?.toString() ?? '0';
-                                final available = p['available']?.toString() ?? '0';
-                                final status = p['status']?.toString() ?? 'unknown';
-                                final id = p['id'] as int?;
-                                final limitNum = int.tryParse(limit) ?? 0;
-                                final availableNum = int.tryParse(available) ?? 0;
-                                final isLowStock = availableNum < (limitNum * 0.2);
-                                
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.surface,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-                                      width: 1,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.04),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: id != null
-                                          ? () => Navigator.pushNamed(
-                                                context,
-                                                '/admin/stocks/purchase',
-                                                arguments: {'id': id, 'name': name},
-                                              )
-                                          : null,
-                                      borderRadius: BorderRadius.circular(16),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(20),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
+                                final qty = _parseInt(p['limit'] ?? p['quantity']) ?? 0;
+                                final status = p['available_status']?.toString() ?? p['status']?.toString() ?? 'unknown';
+                                final id = _parseInt(p['id']);
+                                final statusColor = _statusColor(status);
+                                return Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: id == null ? null : () => _openPurchase(id, name),
+                                    child: Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: sectionCardDecoration(context),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 10,
+                                            height: 46,
+                                            decoration: BoxDecoration(
+                                              color: statusColor,
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Container(
-                                                  padding: const EdgeInsets.all(10),
-                                                  decoration: BoxDecoration(
-                                                    color: Theme.of(context).colorScheme.primaryContainer,
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.inventory_2_rounded,
-                                                    color: Theme.of(context).colorScheme.primary,
-                                                    size: 24,
-                                                  ),
+                                                Text(
+                                                  name,
+                                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                                                 ),
-                                                const SizedBox(width: 12),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        name,
-                                                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                                              fontWeight: FontWeight.bold,
-                                                              color: Theme.of(context).colorScheme.onSurface,
-                                                            ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  'Qty: $qty',
+                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                                                       ),
-                                                      const SizedBox(height: 4),
-                                                      _buildStatusChip(context, status),
-                                                    ],
-                                                  ),
-                                                ),
-                                                if (id != null)
-                                                  Container(
-                                                    padding: const EdgeInsets.all(8),
-                                                    decoration: BoxDecoration(
-                                                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Icon(
-                                                      Icons.chevron_right_rounded,
-                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                      size: 20,
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: _buildStatItem(
-                                                    context,
-                                                    Icons.trending_up_rounded,
-                                                    'Limit',
-                                                    limit,
-                                                    Colors.blue,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 12),
-                                                Expanded(
-                                                  child: _buildStatItem(
-                                                    context,
-                                                    Icons.check_circle_outline_rounded,
-                                                    'Available',
-                                                    available,
-                                                    isLowStock ? Colors.red : Colors.green,
-                                                  ),
                                                 ),
                                               ],
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: statusColor.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              status.toUpperCase(),
+                                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                    color: statusColor,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            Icons.chevron_right_rounded,
+                                            size: 20,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -241,102 +216,6 @@ class _StocksScreenState extends State<StocksScreen> {
                               },
                             ),
             ),
-    );
-  }
-
-  Widget _buildStatusChip(BuildContext context, String status) {
-    Color bgColor;
-    Color textColor;
-    IconData icon;
-    
-    switch (status.toLowerCase()) {
-      case 'active':
-      case 'available':
-        bgColor = Colors.green.shade50;
-        textColor = Colors.green.shade700;
-        icon = Icons.check_circle_rounded;
-        break;
-      case 'low':
-      case 'warning':
-        bgColor = Colors.orange.shade50;
-        textColor = Colors.orange.shade700;
-        icon = Icons.warning_rounded;
-        break;
-      case 'out':
-      case 'empty':
-        bgColor = Colors.red.shade50;
-        textColor = Colors.red.shade700;
-        icon = Icons.cancel_rounded;
-        break;
-      default:
-        bgColor = Colors.grey.shade100;
-        textColor = Colors.grey.shade700;
-        icon = Icons.info_rounded;
-    }
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: textColor),
-          const SizedBox(width: 6),
-          Text(
-            status.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(BuildContext context, IconData icon, String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

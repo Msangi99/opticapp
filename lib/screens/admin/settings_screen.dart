@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../api/settings_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'settings_roles_screen.dart';
+import 'widgets/admin_page_ui.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -70,13 +71,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Settings',
-      actions: [if (_settings.isNotEmpty) IconButton(icon: const Icon(Icons.save_rounded), onPressed: _save, tooltip: 'Save')],
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.admin_panel_settings_rounded),
+          tooltip: 'Roles',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsRolesScreen()),
+          ),
+        ),
+        if (_settings.isNotEmpty) IconButton(icon: const Icon(Icons.save_rounded), onPressed: _save, tooltip: 'Save'),
+      ],
       body: _loading
-          ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Loading…', style: TextStyle(color: Color(0xFF6B7280)))]))
+          ? const AdminPageLoading()
           : _error != null
-              ? SingleChildScrollView(physics: const AlwaysScrollableScrollPhysics(), child: Padding(padding: const EdgeInsets.all(20), child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)), child: Text(_error!, style: errorStyle()))))
+              ? AdminPageError(message: _error!)
               : _settings.isEmpty
-                  ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.settings_outlined, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)), const SizedBox(height: 16), Text('No settings', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))]))
+                  ? const AdminPageEmpty(icon: Icons.settings_outlined, title: 'No settings')
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView(

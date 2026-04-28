@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../api/agent_transfer_api.dart';
 import '../../api/client.dart';
+import '../admin/widgets/admin_page_ui.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
 
@@ -12,6 +14,14 @@ class AgentMyTransfersScreen extends StatefulWidget {
 }
 
 class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
+  String _fmtDate(String raw) {
+    if (raw.isEmpty) return '—';
+    try {
+      return DateFormat('MMM d, y · HH:mm').format(DateTime.parse(raw).toLocal());
+    } catch (_) {
+      return raw;
+    }
+  }
   List<Map<String, dynamic>> _list = [];
   bool _loading = true;
   String? _error;
@@ -77,41 +87,17 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
   Widget build(BuildContext context) {
     return AgentScaffold(
       title: 'Transfer requests',
+      showDrawer: true,
       body: _loading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading…', style: TextStyle(color: Color(0xFF6B7280))),
-                ],
-              ),
-            )
+          ? const AdminPageLoading()
           : _error != null
-              ? SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(_error!, style: errorStyle()),
-                    ),
-                  ),
-                )
+              ? AdminPageError(message: _error!)
               : RefreshIndicator(
                   onRefresh: _load,
                   child: _list.isEmpty
-                      ? ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(child: Text('No transfer requests yet.', style: TextStyle(color: Color(0xFF6B7280)))),
-                          ],
+                      ? const AdminPageEmpty(
+                          icon: Icons.swap_horiz_rounded,
+                          title: 'No transfer requests yet.',
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
@@ -128,7 +114,9 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
                             final fromId = from?['id'];
                             final int? fid = fromId is int ? fromId : (fromId is num ? fromId.toInt() : null);
                             final canCancel = status == 'pending' && _myUserId != null && fid == _myUserId;
-                            return Container(
+                            return InkWell(
+                              onTap: () => Navigator.pushNamed(context, '/agent/transfers/detail', arguments: {'id': t['id']}),
+                              child: Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(16),
                               decoration: sectionCardDecoration(context),
@@ -147,7 +135,7 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 6),
-                                  Text('$cnt device(s) · $created', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                  Text('$cnt device(s) · ${_fmtDate(created)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                                   if ((t['message'] as String?)?.isNotEmpty == true)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8),
@@ -167,6 +155,7 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
                                       ),
                                     ),
                                 ],
+                              ),
                               ),
                             );
                           },

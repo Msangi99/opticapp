@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Brand orange (aligns with web admin #fa8900).
 const Color _primaryOrange = Color(0xFFFA8900);
@@ -26,10 +27,15 @@ ThemeData get appThemeLight {
     outline: const Color(0xFFE5E7EB),
   );
 
+  final baseForText = ThemeData(useMaterial3: true, colorScheme: colorScheme);
+  final textTheme = GoogleFonts.plusJakartaSansTextTheme(baseForText.textTheme);
+  final primaryTextTheme = GoogleFonts.plusJakartaSansTextTheme(baseForText.primaryTextTheme);
+
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
-    fontFamily: 'Roboto',
+    textTheme: textTheme,
+    primaryTextTheme: primaryTextTheme,
     scaffoldBackgroundColor: _surfaceLight,
     appBarTheme: AppBarTheme(
       centerTitle: true,
@@ -37,7 +43,7 @@ ThemeData get appThemeLight {
       scrolledUnderElevation: 1,
       backgroundColor: _surfaceCard,
       foregroundColor: _textPrimary,
-      titleTextStyle: const TextStyle(
+      titleTextStyle: GoogleFonts.plusJakartaSans(
         color: _textPrimary,
         fontSize: 18,
         fontWeight: FontWeight.w600,
@@ -68,8 +74,8 @@ ThemeData get appThemeLight {
         borderSide: const BorderSide(color: _errorRed),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      labelStyle: const TextStyle(color: _textSecondary),
-      hintStyle: const TextStyle(color: _textSecondary),
+      labelStyle: GoogleFonts.plusJakartaSans(color: _textSecondary),
+      hintStyle: GoogleFonts.plusJakartaSans(color: _textSecondary),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -78,7 +84,7 @@ ThemeData get appThemeLight {
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -88,7 +94,7 @@ ThemeData get appThemeLight {
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -106,7 +112,7 @@ ThemeData get appThemeLight {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       backgroundColor: _textPrimary,
-      contentTextStyle: const TextStyle(color: Colors.white),
+      contentTextStyle: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14),
     ),
     dividerTheme: const DividerThemeData(color: Color(0xFFE5E7EB), thickness: 1),
     dropdownMenuTheme: DropdownMenuThemeData(
@@ -135,9 +141,53 @@ BoxDecoration sectionCardDecoration(BuildContext context) {
   );
 }
 
+/// Elevated dashboard card: softer shadow, optional left accent (KPI / semantic).
+/// [nested] uses a lighter shadow when cards sit inside another pro card.
+BoxDecoration proCardDecoration(
+  BuildContext context, {
+  Color? leftAccent,
+  double radius = 16,
+  bool outline = false,
+  bool nested = false,
+}) {
+  final shadows = nested
+      ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ]
+      : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 1),
+          ),
+        ];
+  return BoxDecoration(
+    color: _surfaceCard,
+    borderRadius: BorderRadius.circular(radius),
+    border: leftAccent != null
+        ? Border(left: BorderSide(color: leftAccent, width: 4))
+        : outline
+            ? Border.all(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+                width: 1,
+              )
+            : null,
+    boxShadow: shadows,
+  );
+}
+
 /// Section label style.
 TextStyle sectionLabelStyle(BuildContext context) {
-  return const TextStyle(
+  return GoogleFonts.plusJakartaSans(
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: _textSecondary,
@@ -146,7 +196,7 @@ TextStyle sectionLabelStyle(BuildContext context) {
 }
 
 /// Error text style.
-TextStyle errorStyle() => const TextStyle(color: _errorRed, fontSize: 14);
+TextStyle errorStyle() => GoogleFonts.plusJakartaSans(color: _errorRed, fontSize: 14);
 
 /// Success color.
 Color get successColor => _successGreen;

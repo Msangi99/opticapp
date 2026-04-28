@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../api/agent_credits_api.dart';
 import '../../api/invoice_api.dart';
 import '../../api/payment_options_api.dart';
+import '../admin/widgets/admin_page_ui.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
 
@@ -127,46 +128,16 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
       title: 'Credit',
       showDrawer: true,
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AdminPageLoading()
           : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _error!,
-                      style: errorStyle(),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              ),
-            )
+          ? AdminPageError(message: _error!)
           : RefreshIndicator(
               onRefresh: _load,
               child: _credits.isEmpty
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(height: 80),
-                        Icon(
-                          Icons.credit_score_outlined,
-                          size: 48,
-                          color: Colors.black38,
-                        ),
-                        SizedBox(height: 16),
-                        Center(
-                          child: Text(
-                            'No credit sales yet.\nRecord a sale as Credit from Record Sale.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                        ),
-                      ],
+                  ? const AdminPageEmpty(
+                      icon: Icons.credit_score_outlined,
+                      title: 'No credit sales yet',
+                      subtitle: 'Record a sale as Credit from Record Sale.',
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
@@ -202,7 +173,7 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                         return Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: id == null ? null : () => _openPaySheet(c),
+                            onTap: id == null ? null : () => Navigator.pushNamed(context, '/agent/credits/detail', arguments: {'id': id}),
                             borderRadius: BorderRadius.circular(12),
                             child: Ink(
                               decoration: sectionCardDecoration(context),
@@ -352,12 +323,13 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                                     ),
                                     if (!settled) ...[
                                       const SizedBox(height: 12),
-                                      Text(
-                                        'Tap to record installment',
-                                        style: theme.textTheme.labelSmall
-                                            ?.copyWith(
-                                              color: theme.colorScheme.primary,
-                                            ),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton.icon(
+                                          onPressed: () => _openPaySheet(c),
+                                          icon: const Icon(Icons.payments_outlined),
+                                          label: const Text('Record installment'),
+                                        ),
                                       ),
                                     ] else ...[
                                       const SizedBox(height: 12),

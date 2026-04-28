@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../api/payment_options_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'channel_detail_screen.dart';
+import 'channel_form_screen.dart';
+import 'channel_transfer_history_screen.dart';
+import 'channel_transfer_screen.dart';
+import 'widgets/admin_page_ui.dart';
 
 /// Admin: list payment options (channels).
 class ChannelsScreen extends StatefulWidget {
@@ -43,9 +48,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
     }
   }
 
-  String _formatCurrency(double value) {
-    return '${value.toStringAsFixed(0)} TZS';
-  }
+  String _formatCurrency(double value) => '${NumberFormat('#,##0').format(value)} TZS';
 
   IconData _iconForType(String? type) {
     switch (type?.toLowerCase()) {
@@ -64,59 +67,48 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Channels',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.swap_horiz_rounded),
+          tooltip: 'Transfer funds',
+          onPressed: () async {
+            final changed = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(builder: (_) => const ChannelTransferScreen()),
+            );
+            if (changed == true) _load();
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.history_rounded),
+          tooltip: 'Transfer history',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ChannelTransferHistoryScreen()),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.add_rounded),
+          tooltip: 'Add channel',
+          onPressed: () async {
+            final changed = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(builder: (_) => const ChannelFormScreen()),
+            );
+            if (changed == true) _load();
+          },
+        ),
+      ],
       body: _loading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading…', style: TextStyle(color: Color(0xFF6B7280))),
-                ],
-              ),
-            )
+          ? const AdminPageLoading()
           : RefreshIndicator(
               onRefresh: _load,
               child: _error != null
-                  ? SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(_error!, style: errorStyle()),
-                        ),
-                      ),
-                    )
+                  ? AdminPageError(message: _error!)
                   : _list.isEmpty
-                      ? SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          child: SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.5,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.account_balance_wallet_outlined,
-                                    size: 64,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No payment channels',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                      ? const AdminPageEmpty(
+                          icon: Icons.account_balance_wallet_outlined,
+                          title: 'No payment channels',
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
@@ -127,11 +119,24 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                             final type = o['type'] as String? ?? '–';
                             final balance = (o['balance'] as num?)?.toDouble() ?? 0.0;
                             final hidden = o['is_hidden'] as bool? ?? false;
+                            final id = (o['id'] as num?)?.toInt();
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(16),
-                              decoration: sectionCardDecoration(context),
-                              child: Row(
+                              child: AdminSectionCard(
+                                padding: const EdgeInsets.all(16),
+                                child: InkWell(
+                                  onTap: id == null
+                                      ? null
+                                      : () async {
+                                          final changed = await Navigator.push<bool>(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ChannelDetailScreen(channelId: id),
+                                            ),
+                                          );
+                                          if (changed == true) _load();
+                                        },
+                                  child: Row(
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.all(10),
@@ -184,14 +189,16 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                                       ],
                                     ),
                                   ),
-                                  Text(
-                                    _formatCurrency(balance),
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
+                                    Text(
+                                      _formatCurrency(balance),
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(context).colorScheme.primary,
+                                          ),
+                                    ),
+                                  ],
                                   ),
-                                ],
+                                ),
                               ),
                             );
                           },

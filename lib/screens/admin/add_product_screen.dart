@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/product_list_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import '../../theme/app_theme.dart';
+import 'widgets/admin_page_ui.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -192,12 +193,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Future<void> _save() async {
     if (_selectedPurchaseId == null) {
-      setState(() => _error = '❌ Select a purchase first.');
+      setState(() => _error = 'Select a purchase first.');
       return;
     }
     final imeis = _imeisFromField().toList();
     if (imeis.isEmpty) {
-      setState(() => _error = '❌ Add at least one IMEI.');
+      setState(() => _error = 'Add at least one IMEI.');
       return;
     }
     setState(() {
@@ -216,8 +217,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final failed = (data?['failed'] as List?) ?? [];
       
       if (created.isNotEmpty) {
-        final msg = StringBuffer('✅ Added ${created.length} product(s).');
-        if (failed.isNotEmpty) msg.write(' ⚠️ ${failed.length} skipped.');
+        final msg = StringBuffer('Added ${created.length} product(s).');
+        if (failed.isNotEmpty) msg.write(' ${failed.length} skipped.');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg.toString()),
@@ -232,18 +233,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
           _error = _buildDetailedFailureMessage(failed);
         });
       } else {
-        setState(() => _error = '❌ No devices added. Please verify the IMEIs and try again.');
+        setState(() => _error = 'No devices added. Please verify the IMEIs and try again.');
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = '❌ Error: ${e.toString().replaceFirst('Exception: ', '')}');
+      setState(() => _error = 'Error: ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   String _buildDetailedFailureMessage(List<dynamic> failed) {
-    if (failed.isEmpty) return '❌ No devices added.';
+    if (failed.isEmpty) return 'No devices added.';
     
     int duplicates = 0;
     int limitExhausted = 0;
@@ -254,7 +255,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (msg.contains('limit')) limitExhausted++;
     }
     
-    final messages = ['❌ No devices added:'];
+    final messages = ['No devices added:'];
     
     if (duplicates > 0) {
       messages.add('• $duplicates IMEI(s) already exist in the system');
@@ -278,16 +279,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return AdminScaffold(
       title: 'Add Product',
       body: _loading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading…', style: TextStyle(color: Color(0xFF6B7280))),
-                ],
-              ),
-            )
+          ? const AdminPageLoading()
           : RefreshIndicator(
               onRefresh: _load,
               child: SingleChildScrollView(
@@ -297,65 +289,58 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // ── Scan / import section ──────────────────────────────
-                    Text('Add barcodes', style: sectionLabelStyle(context)),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Capture a photo of the barcode, then scan. '
-                      'Gallery reads saved photos.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    AdminSectionCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Add barcodes', style: sectionLabelStyle(context)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Capture a photo of the barcode, then scan. Gallery reads saved photos.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
                           ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: _decoding ? null : _captureAndScan,
-                            icon: const Icon(Icons.camera_alt_rounded),
-                            label: const Text('Capture & scan'),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: _decoding ? null : _captureAndScan,
+                                  icon: const Icon(Icons.camera_alt_rounded),
+                                  label: const Text('Capture & scan'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _decoding ? null : _pickFromGallery,
+                                  icon: const Icon(Icons.photo_library_outlined),
+                                  label: const Text('Gallery'),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _decoding ? null : _pickFromGallery,
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('Gallery'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_decoding) ...[
-                      const SizedBox(height: 12),
-                      const LinearProgressIndicator(),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Reading barcodes from photos…',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          if (_decoding) ...[
+                            const SizedBox(height: 12),
+                            const LinearProgressIndicator(),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Reading barcodes from photos…',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
                             ),
+                          ],
+                        ],
                       ),
-                    ],
+                    ),
                     const SizedBox(height: 20),
 
                     // ── Error banner ───────────────────────────────────────
                     if (_error != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .errorContainer
-                              .withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          _error!,
-                          style: errorStyle(),
-                          maxLines: null,
-                        ),
-                      ),
+                      AdminPageError(message: _error!),
                       const SizedBox(height: 20),
                     ],
 

@@ -4,7 +4,9 @@ import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/stocks_screen.dart';
+import 'screens/admin/purchases_screen.dart';
 import 'screens/admin/purchase_detail_screen.dart';
+import 'screens/admin/purchase_info_screen.dart';
 import 'screens/admin/add_product_screen.dart';
 import 'screens/admin/expenses_screen.dart';
 import 'screens/admin/channels_screen.dart';
@@ -13,8 +15,10 @@ import 'screens/admin/orders_screen.dart';
 import 'screens/admin/customers_screen.dart';
 import 'screens/admin/dealers_screen.dart';
 import 'screens/admin/agents_screen.dart';
+import 'screens/admin/admin_assign_agent_products_screen.dart';
 import 'screens/admin/categories_screen.dart';
 import 'screens/admin/distribution_screen.dart';
+import 'screens/admin/distribution_info_screen.dart';
 import 'screens/admin/pending_sales_screen.dart';
 import 'screens/admin/reports_screen.dart';
 import 'screens/admin/settings_screen.dart';
@@ -23,6 +27,12 @@ import 'screens/agent/sell_screen.dart';
 import 'screens/agent/agent_credits_screen.dart';
 import 'screens/agent/agent_transfer_screen.dart';
 import 'screens/agent/agent_my_transfers_screen.dart';
+import 'screens/agent/agent_transfer_detail_screen.dart';
+import 'screens/agent/agent_credit_detail_screen.dart';
+import 'screens/agent/agent_sales_history_screen.dart';
+import 'screens/agent/agent_sale_detail_screen.dart';
+import 'screens/agent/agent_leads_screen.dart';
+import 'screens/agent/agent_lead_detail_screen.dart';
 import 'screens/admin/admin_agent_transfers_screen.dart';
 import 'screens/admin/admin_branch_transfer_screen.dart';
 
@@ -42,7 +52,9 @@ class OpticApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/admin/dashboard': (context) => const AdminDashboardScreen(),
-        '/admin/stocks': (context) => const StocksScreen(),
+        '/admin/stocks': (context) => const StocksScreen(pageTitle: 'Stocks'),
+        '/admin/purchases': (context) => const PurchasesScreen(),
+        '/admin/purchases/info': (context) => const PurchaseInfoScreen(),
         '/admin/stocks/purchase': (context) => const PurchaseDetailScreen(),
         '/admin/add-product': (context) => const AddProductScreen(),
         '/admin/expenses': (context) => const ExpensesScreen(),
@@ -53,7 +65,9 @@ class OpticApp extends StatelessWidget {
         '/admin/customers': (context) => const CustomersScreen(),
         '/admin/dealers': (context) => const DealersScreen(),
         '/admin/agents': (context) => const AgentsScreen(),
+        '/admin/agents/assign-products': (context) => const AdminAssignAgentProductsScreen(),
         '/admin/stock/distribution': (context) => const DistributionScreen(),
+        '/admin/stock/distribution/info': (context) => const DistributionInfoScreen(),
         '/admin/stock/pending-sales': (context) => const PendingSalesScreen(),
         '/admin/stock/agent-transfers': (context) => const AdminAgentTransfersScreen(),
         '/admin/stock/branch-transfer': (context) => const AdminBranchTransferScreen(),
@@ -64,6 +78,12 @@ class OpticApp extends StatelessWidget {
         '/agent/credits': (context) => const AgentCreditsScreen(),
         '/agent/transfer': (context) => const AgentTransferScreen(),
         '/agent/transfers': (context) => const AgentMyTransfersScreen(),
+        '/agent/transfers/detail': (context) => const AgentTransferDetailScreen(),
+        '/agent/credits/detail': (context) => const AgentCreditDetailScreen(),
+        '/agent/sales': (context) => const AgentSalesHistoryScreen(),
+        '/agent/sales/detail': (context) => const AgentSaleDetailScreen(),
+        '/agent/leads': (context) => const AgentLeadsScreen(),
+        '/agent/leads/detail': (context) => const AgentLeadDetailScreen(),
         '/home': (context) => const _PlaceholderHome(),
       },
       home: const _AuthChecker(),

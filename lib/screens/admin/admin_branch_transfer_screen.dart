@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../api/admin_branch_transfer_api.dart';
 import '../../api/branches_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_branch_transfer_logs_screen.dart';
 import 'admin_scaffold.dart';
+import 'widgets/admin_page_ui.dart';
 
 class AdminBranchTransferScreen extends StatefulWidget {
   const AdminBranchTransferScreen({super.key});
@@ -149,24 +149,18 @@ class _AdminBranchTransferScreenState extends State<AdminBranchTransferScreen> {
         ),
       ],
       body: _loadingBranches
-          ? const Center(child: CircularProgressIndicator())
+          ? const AdminPageLoading()
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(_error!, style: errorStyle()),
-                      ),
-                    ),
+                    Padding(padding: const EdgeInsets.only(bottom: 12), child: AdminPageError(message: _error!)),
+                  AdminSectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                   CheckboxListTile(
                     value: _unassigned,
                     onChanged: (v) {
@@ -213,8 +207,11 @@ class _AdminBranchTransferScreenState extends State<AdminBranchTransferScreen> {
                         .toList(),
                     onChanged: (v) => setState(() => _toBranchId = v),
                   ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  Text('Devices', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                  Text('Devices', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   if (_loadingItems)
                     const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))

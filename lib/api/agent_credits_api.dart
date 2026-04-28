@@ -12,6 +12,15 @@ Future<List<Map<String, dynamic>>> getAgentCredits() async {
   return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
 }
 
+Future<Map<String, dynamic>> getAgentCreditDetail(int id) async {
+  final res = await apiGet('/agent/credits/$id');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load credit detail');
+  }
+  return data?['data'] as Map<String, dynamic>? ?? {};
+}
+
 /// Record an installment payment on a credit sale.
 Future<Map<String, dynamic>> payAgentCreditInstallment({
   required int agentCreditId,

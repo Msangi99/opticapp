@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../api/orders_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'order_detail_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -53,7 +54,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         itemCount: _list.length,
                         itemBuilder: (context, index) {
                           final o = _list[index];
-                          final id = o['id'] as int? ?? 0;
+                          final rawId = o['id'];
+                          final orderId = switch (rawId) {
+                            int i => i,
+                            num n => n.toInt(),
+                            _ => 0,
+                          };
                           final customerName = o['customer_name'] as String? ?? '–';
                           final total = (o['total_price'] as num?)?.toDouble() ?? 0.0;
                           final status = o['status'] as String? ?? 'pending';
@@ -61,12 +67,63 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
                             decoration: sectionCardDecoration(context),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)), child: Icon(Icons.receipt_long_rounded, color: Colors.purple.shade700, size: 22)),
-                                const SizedBox(width: 16),
-                                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('#$id', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)), Text(customerName, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))])),
-                                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(_formatCurrency(total), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)), const SizedBox(height: 4), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)), child: Text((status).toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)))])
+                                Row(
+                                  children: [
+                                    Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                            color: Colors.purple.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(10)),
+                                        child: Icon(Icons.receipt_long_rounded, color: Colors.purple.shade700, size: 22)),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                        child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('#$orderId',
+                                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                              Text(customerName,
+                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                            ])),
+                                    Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(_formatCurrency(total),
+                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Theme.of(context).colorScheme.primary)),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                  color: Colors.orange.withValues(alpha: 0.15),
+                                                  borderRadius: BorderRadius.circular(6)),
+                                              child: Text(status.toUpperCase(),
+                                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600))),
+                                        ]),
+                                  ],
+                                ),
+                                if (orderId > 0) ...[
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton.icon(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (context) => OrderDetailScreen(orderId: orderId),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.visibility_outlined, size: 18),
+                                      label: const Text('Show details'),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           );

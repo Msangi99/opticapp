@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../api/admin_agent_transfers_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'widgets/admin_page_ui.dart';
 
 class AdminAgentTransferDetailScreen extends StatefulWidget {
   const AdminAgentTransferDetailScreen({super.key, required this.transferId});
@@ -90,24 +90,33 @@ class _AdminAgentTransferDetailScreenState extends State<AdminAgentTransferDetai
     return AdminScaffold(
       title: 'Transfer #${widget.transferId}',
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const AdminPageLoading()
           : _error != null
-              ? Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(_error!, style: errorStyle()),
-                )
+              ? AdminPageError(message: _error!)
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
+                      AdminSectionCard(
                         padding: const EdgeInsets.all(16),
-                        decoration: sectionCardDecoration(context),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Status: $status', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            Row(
+                              children: [
+                                Text('Status', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 8),
+                                StatusChip(
+                                  label: status,
+                                  color: status == 'approved'
+                                      ? const Color(0xFF047857)
+                                      : status == 'rejected'
+                                          ? const Color(0xFFB91C1C)
+                                          : const Color(0xFFB45309),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 12),
                             _agentBlock('From', _data['from_agent'] as Map<String, dynamic>?),
                             const SizedBox(height: 12),
@@ -140,16 +149,17 @@ class _AdminAgentTransferDetailScreenState extends State<AdminAgentTransferDetai
                           final branch = it['effective_branch_name'] as String? ?? '—';
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: sectionCardDecoration(context),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(imei, style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.w600)),
-                                if (pname.isNotEmpty || cat.isNotEmpty) Text('$cat · $pname', style: Theme.of(context).textTheme.bodySmall),
-                                if (sn.isNotEmpty) Text('Stock: $sn', style: Theme.of(context).textTheme.bodySmall),
-                                Text('Branch: $branch', style: Theme.of(context).textTheme.bodySmall),
-                              ],
+                            child: AdminSectionCard(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(imei, style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.w600)),
+                                  if (pname.isNotEmpty || cat.isNotEmpty) KeyValueRow(label: 'Product', value: '$cat · $pname'),
+                                  if (sn.isNotEmpty) KeyValueRow(label: 'Stock', value: sn),
+                                  KeyValueRow(label: 'Branch', value: branch),
+                                ],
+                              ),
                             ),
                           );
                         }).toList();

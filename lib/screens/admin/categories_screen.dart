@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../api/categories_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'category_models_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -52,17 +53,61 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           final c = _list[index];
                           final name = c['name'] as String? ?? '–';
                           final count = c['products_count'] as int? ?? 0;
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: sectionCardDecoration(context),
-                            child: Row(
-                              children: [
-                                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(10)), child: Icon(Icons.category_rounded, color: Theme.of(context).colorScheme.primary, size: 22)),
-                                const SizedBox(width: 16),
-                                Expanded(child: Text(name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
-                                Text('$count products', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                              ],
+                          final rawId = c['id'];
+                          final int? categoryId = switch (rawId) {
+                            int i => i,
+                            num n => n.toInt(),
+                            String s => int.tryParse(s),
+                            _ => null,
+                          };
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: categoryId == null
+                                  ? null
+                                  : () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (context) => CategoryModelsScreen(
+                                            categoryId: categoryId,
+                                            categoryName: name,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
+                                decoration: sectionCardDecoration(context),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primaryContainer,
+                                            borderRadius: BorderRadius.circular(10)),
+                                        child: Icon(Icons.category_rounded,
+                                            color: Theme.of(context).colorScheme.primary, size: 22)),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                        child: Text(name,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(fontWeight: FontWeight.w600))),
+                                    Text('$count models',
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                    if (categoryId != null) ...[
+                                      const SizedBox(width: 4),
+                                      Icon(Icons.chevron_right,
+                                          size: 20,
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ),
                           );
                         },
