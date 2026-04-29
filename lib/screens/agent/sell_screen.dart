@@ -15,7 +15,8 @@ class SellScreen extends StatefulWidget {
   State<SellScreen> createState() => _SellScreenState();
 }
 
-class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateMixin {
+class _SellScreenState extends State<SellScreen>
+    with SingleTickerProviderStateMixin {
   static int? _parseIntId(dynamic v) {
     if (v == null) return null;
     if (v is int) return v;
@@ -219,14 +220,12 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
       if (!mounted) return;
       setState(() {
         final list = products.isNotEmpty ? products : <Map<String, dynamic>>[];
-        _availableProducts = list
-            .where((p) {
-              final id = p['id'];
-              if (id == null) return true;
-              final int? idInt = id is int ? id : (id is num ? id.toInt() : null);
-              return idInt == null || !_soldInSessionIds.contains(idInt);
-            })
-            .toList();
+        _availableProducts = list.where((p) {
+          final id = p['id'];
+          if (id == null) return true;
+          final int? idInt = id is int ? id : (id is num ? id.toInt() : null);
+          return idInt == null || !_soldInSessionIds.contains(idInt);
+        }).toList();
         _loadingProducts = false;
       });
     } catch (e) {
@@ -260,8 +259,12 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
           _error = null;
           final sellPrice = product['sell_price'];
           if (sellPrice != null) {
-            final n = sellPrice is num ? sellPrice : (double.tryParse(sellPrice.toString()) ?? 0.0);
-            _priceController.text = n == n.roundToDouble() ? n.toInt().toString() : n.toStringAsFixed(2);
+            final n = sellPrice is num
+                ? sellPrice
+                : (double.tryParse(sellPrice.toString()) ?? 0.0);
+            _priceController.text = n == n.roundToDouble()
+                ? n.toInt().toString()
+                : n.toStringAsFixed(2);
           } else {
             _priceController.text = '';
           }
@@ -283,12 +286,12 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   Future<void> _openScanner() async {
     final image = await ImagePicker().pickImage(source: ImageSource.camera);
     if (image == null || !mounted) return;
-    
+
     setState(() => _scanning = true);
     try {
       final barcodes = await _analyzeImageForImei(image.path);
       if (!mounted) return;
-      
+
       if (barcodes.isEmpty) {
         setState(() {
           _scanning = false;
@@ -296,7 +299,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
         });
         return;
       }
-      
+
       // Use the first detected barcode
       final code = barcodes.first;
       await _lookupImei(code);
@@ -342,8 +345,12 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
         final sellPrice = device['sell_price'];
         final price = sellPrice ?? device['purchase_price'];
         if (price != null) {
-          final n = price is num ? price : (double.tryParse(price.toString()) ?? 0.0);
-          _priceController.text = n == n.roundToDouble() ? n.toInt().toString() : n.toStringAsFixed(2);
+          final n = price is num
+              ? price
+              : (double.tryParse(price.toString()) ?? 0.0);
+          _priceController.text = n == n.roundToDouble()
+              ? n.toInt().toString()
+              : n.toStringAsFixed(2);
         } else {
           _priceController.text = '';
         }
@@ -354,11 +361,13 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
       setState(() {
         _device = null;
         if (errorMsg.contains('not found')) {
-          _error = '❌ IMEI not found: "$imei" is not in the system. Check the barcode or enter manually.';
+          _error =
+              '❌ IMEI not found: "$imei" is not in the system. Check the barcode or enter manually.';
         } else if (errorMsg.contains('already sold')) {
           _error = '⚠️ Device already sold: This IMEI has already been sold.';
         } else if (errorMsg.contains('assigned')) {
-          _error = '⚠️ Already assigned: This device is assigned to another agent.';
+          _error =
+              '⚠️ Already assigned: This device is assigned to another agent.';
         } else {
           _error = '❌ Error: $errorMsg';
         }
@@ -370,6 +379,14 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
     final s = _priceController.text.trim();
     if (s.isEmpty) return null;
     return double.tryParse(s);
+  }
+
+  double get _minimumAllowedSellPrice {
+    if (_device == null) return 0;
+    final raw = _device!['sell_price'];
+    if (raw == null) return 0;
+    if (raw is num) return raw.toDouble();
+    return double.tryParse(raw.toString()) ?? 0;
   }
 
   static const int _quantity = 1;
@@ -398,8 +415,18 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
       return;
     }
     final unitPrice = _unitPrice ?? 0.0;
+    final minAllowed = _minimumAllowedSellPrice;
+    if (unitPrice + 0.0001 < minAllowed) {
+      setState(
+        () => _error =
+            'Selling price cannot be less than ${minAllowed.toStringAsFixed(2)}.',
+      );
+      return;
+    }
     final pid = _device!['id'];
-    final productListId = pid is int ? pid : (pid is num ? pid.toInt() : int.tryParse(pid.toString()));
+    final productListId = pid is int
+        ? pid
+        : (pid is num ? pid.toInt() : int.tryParse(pid.toString()));
     if (productListId == null) {
       setState(() => _error = 'Invalid product.');
       return;
@@ -456,11 +483,14 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
       if (!mounted) return;
       _soldInSessionIds.add(productListId);
       setState(() {
-        _availableProducts.removeWhere((product) => product['id'] == _device!['id']);
+        _availableProducts.removeWhere(
+          (product) => product['id'] == _device!['id'],
+        );
         _selectedProductId = null;
         _device = null;
-        _selectedChannelId =
-            _regularChannels.isNotEmpty ? _parseIntId(_regularChannels.first['id']) : null;
+        _selectedChannelId = _regularChannels.isNotEmpty
+            ? _parseIntId(_regularChannels.first['id'])
+            : null;
         _customerController.clear();
         _customerPhoneController.clear();
         _kinNameController.clear();
@@ -495,7 +525,10 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final total = _totalAmount;
     final theme = Theme.of(context);
-    final tabViewHeight = (MediaQuery.sizeOf(context).height * 0.42).clamp(280.0, 520.0);
+    final tabViewHeight = (MediaQuery.sizeOf(context).height * 0.42).clamp(
+      280.0,
+      520.0,
+    );
 
     return AgentScaffold(
       title: 'Record Sale',
@@ -527,8 +560,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                     Text(
                       'Select from available products:',
                       style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int?>(
@@ -564,8 +597,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                           child: Text(
                             'OR',
                             style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                         const Expanded(child: Divider()),
@@ -573,10 +606,7 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(height: 20),
                   ],
-                  Text(
-                    'Scan IMEI barcode',
-                    style: sectionLabelStyle(context),
-                  ),
+                  Text('Scan IMEI barcode', style: sectionLabelStyle(context)),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -589,7 +619,11 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.camera_alt_rounded),
-                      label: Text(_scanning ? 'Looking up device…' : 'Capture & scan IMEI'),
+                      label: Text(
+                        _scanning
+                            ? 'Looking up device…'
+                            : 'Capture & scan IMEI',
+                      ),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                       ),
@@ -600,7 +634,9 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                        color: theme.colorScheme.errorContainer.withValues(
+                          alpha: 0.3,
+                        ),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(_error!, style: errorStyle(), maxLines: null),
@@ -626,29 +662,29 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                                 Text(
                                   _device!['model'] as String? ?? '—',
                                   style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'IMEI: ${_device!['imei_number']}',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
                                 if (_device!['stock_name'] != null)
                                   Text(
                                     'Stock: ${_device!['stock_name']}',
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                        ),
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
                                   ),
                                 if (_device!['category_name'] != null)
                                   Text(
                                     'Category: ${_device!['category_name']}',
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                        ),
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
                                   ),
                               ],
                             ),
@@ -728,8 +764,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                     ? 'Select or scan a device above to use Watu.'
                     : 'Select or scan a device above to complete a sale.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           TextFormField(
@@ -761,6 +797,15 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
               prefixIcon: Icon(Icons.attach_money_rounded, size: 22),
             ),
           ),
+          if (_device != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Minimum allowed: ${_minimumAllowedSellPrice.toStringAsFixed(2)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           if (!credit) ...[
             // Sell tab: agent picks any payment channel
             const SizedBox(height: 16),
@@ -782,7 +827,10 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 decoration: const InputDecoration(
                   labelText: 'Payment channel',
                   hintText: 'Select channel',
-                  prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 22),
+                  prefixIcon: Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 22,
+                  ),
                 ),
                 items: [
                   const DropdownMenuItem<int?>(
@@ -791,7 +839,11 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                   ),
                   ..._regularChannels.map((ch) {
                     final id = ch['id'];
-                    final cid = id is int ? id : (id is num ? id.toInt() : int.tryParse(id.toString()));
+                    final cid = id is int
+                        ? id
+                        : (id is num
+                              ? id.toInt()
+                              : int.tryParse(id.toString()));
                     return DropdownMenuItem<int?>(
                       value: cid,
                       child: Text(ch['name']?.toString() ?? '—'),
@@ -807,23 +859,30 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.4,
+                ),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: theme.dividerColor),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.account_balance_wallet_outlined,
-                      size: 20, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Payment channel',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            )),
+                        Text(
+                          'Payment channel',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           _watuChannel != null
@@ -836,8 +895,11 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                       ],
                     ),
                   ),
-                  Icon(Icons.lock_outline_rounded,
-                      size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ],
               ),
             ),
@@ -901,23 +963,25 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 Text(
                   'Total price',
                   style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface,
-                      ),
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
                 Text(
                   total != null ? total.toStringAsFixed(2) : '—',
                   style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.primary,
-                      ),
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: (_device != null && !_selling) ? () => _sell(credit: credit) : null,
+            onPressed: (_device != null && !_selling)
+                ? () => _sell(credit: credit)
+                : null,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
             ),
@@ -938,7 +1002,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildNeededForm(BuildContext context, ThemeData theme) {
-    final leadReady = _needCategoryId != null &&
+    final leadReady =
+        _needCategoryId != null &&
         _needProductId != null &&
         _leadCustomerNameController.text.trim().isNotEmpty &&
         _leadCustomerPhoneController.text.trim().isNotEmpty &&
@@ -953,8 +1018,8 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
           Text(
             'Submit a lead: who is asking, which branch they prefer, and what product they want.',
             style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -982,7 +1047,13 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
           if (_loadingBranches)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
-              child: Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+              child: Center(
+                child: SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
             )
           else if (_branches.isNotEmpty)
             DropdownButtonFormField<int?>(
@@ -1012,12 +1083,17 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
             Text(
               'No branches in the system yet. Ask an admin to add branches; you can still submit category and model.',
               style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           const SizedBox(height: 16),
           if (_loadingCatalog)
-            const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(),
+              ),
+            )
           else
             DropdownButtonFormField<int?>(
               value: _needCategoryId,
@@ -1030,16 +1106,14 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                   value: null,
                   child: Text('-- Select category --'),
                 ),
-                ..._categories
-                    .map((c) {
-                      final cid = _parseIntId(c['id']);
-                      if (cid == null) return null;
-                      return DropdownMenuItem<int?>(
-                        value: cid,
-                        child: Text(c['name']?.toString() ?? '—'),
-                      );
-                    })
-                    .whereType<DropdownMenuItem<int?>>(),
+                ..._categories.map((c) {
+                  final cid = _parseIntId(c['id']);
+                  if (cid == null) return null;
+                  return DropdownMenuItem<int?>(
+                    value: cid,
+                    child: Text(c['name']?.toString() ?? '—'),
+                  );
+                }).whereType<DropdownMenuItem<int?>>(),
               ],
               onChanged: (v) => _onNeedCategoryChanged(v),
             ),
@@ -1055,16 +1129,14 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 value: null,
                 child: Text('-- Select model --'),
               ),
-              ..._needProducts
-                  .map((p) {
-                    final pid = _parseIntId(p['id']);
-                    if (pid == null) return null;
-                    return DropdownMenuItem<int?>(
-                      value: pid,
-                      child: Text(p['name']?.toString() ?? '—'),
-                    );
-                  })
-                  .whereType<DropdownMenuItem<int?>>(),
+              ..._needProducts.map((p) {
+                final pid = _parseIntId(p['id']);
+                if (pid == null) return null;
+                return DropdownMenuItem<int?>(
+                  value: pid,
+                  child: Text(p['name']?.toString() ?? '—'),
+                );
+              }).whereType<DropdownMenuItem<int?>>(),
             ],
             onChanged: _needCategoryId == null
                 ? null
@@ -1082,7 +1154,10 @@ class _SellScreenState extends State<SellScreen> with SingleTickerProviderStateM
                 ? const SizedBox(
                     height: 24,
                     width: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text('Submit lead'),
           ),

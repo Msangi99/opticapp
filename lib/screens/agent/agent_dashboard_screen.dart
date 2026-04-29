@@ -151,11 +151,6 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
   }
 
   Widget _buildHeroPanel() {
-    final stats = _data?['stats'] as Map<String, dynamic>? ?? {};
-    final totalAssigned = stats['total_assigned'] as int? ?? 0;
-    final totalSold = stats['total_sold'] as int? ?? 0;
-    final totalRemaining = stats['total_remaining'] as int? ?? 0;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -184,36 +179,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                   color: Colors.white.withValues(alpha: 0.82),
                 ),
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _heroBadge('Assigned $totalAssigned'),
-              _heroBadge('Sold $totalSold'),
-              _heroBadge('Remaining $totalRemaining'),
-            ],
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _heroBadge(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }
@@ -791,7 +757,7 @@ class _InventorySheet extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: () => _downloadInvoice(context, invoiceEndpoint),
                   icon: const Icon(Icons.download_rounded, size: 18),
-                  label: const Text('Download invoice'),
+                  label: const Text('Receipt'),
                 ),
               ),
             ],

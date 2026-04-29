@@ -173,7 +173,13 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                         return Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: id == null ? null : () => Navigator.pushNamed(context, '/agent/credits/detail', arguments: {'id': id}),
+                            onTap: id == null
+                                ? null
+                                : () => Navigator.pushNamed(
+                                    context,
+                                    '/agent/credits/detail',
+                                    arguments: {'id': id},
+                                  ),
                             borderRadius: BorderRadius.circular(12),
                             child: Ink(
                               decoration: sectionCardDecoration(context),
@@ -321,21 +327,21 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                                         ),
                                       ],
                                     ),
-                                    if (!settled) ...[
-                                      const SizedBox(height: 12),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: TextButton.icon(
-                                          onPressed: () => _openPaySheet(c),
-                                          icon: const Icon(Icons.payments_outlined),
-                                          label: const Text('Record installment'),
-                                        ),
-                                      ),
-                                    ] else ...[
-                                      const SizedBox(height: 12),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: TextButton.icon(
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        if (!settled)
+                                          TextButton.icon(
+                                            onPressed: () => _openPaySheet(c),
+                                            icon: const Icon(
+                                              Icons.payments_outlined,
+                                            ),
+                                            label: const Text(
+                                              'Record installment',
+                                            ),
+                                          ),
+                                        TextButton.icon(
                                           onPressed: () =>
                                               _downloadCreditInvoice(c),
                                           icon: const Icon(
@@ -343,8 +349,8 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                                           ),
                                           label: const Text('Download invoice'),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
