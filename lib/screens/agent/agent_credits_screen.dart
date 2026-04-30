@@ -157,7 +157,6 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                         final product = c['product_label']?.toString() ?? '—';
                         final imei = c['imei_number']?.toString();
 
-                        final settled = remaining <= 0.0001;
                         Color statusColor;
                         switch (status) {
                           case 'paid':
@@ -331,16 +330,6 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
-                                        if (!settled)
-                                          TextButton.icon(
-                                            onPressed: () => _openPaySheet(c),
-                                            icon: const Icon(
-                                              Icons.payments_outlined,
-                                            ),
-                                            label: const Text(
-                                              'Record installment',
-                                            ),
-                                          ),
                                         TextButton.icon(
                                           onPressed: () =>
                                               _downloadCreditInvoice(c),
