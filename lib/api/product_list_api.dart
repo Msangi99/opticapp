@@ -124,6 +124,43 @@ Future<Map<String, dynamic>> sellDevice({
   return data['data'] as Map<String, dynamic>;
 }
 
+/// Total (quantity-only) assignments for the Given tab.
+/// Each row has product_id, product_name, quantity_remaining, sell_price.
+Future<List<Map<String, dynamic>>> getTotalAssignments() async {
+  final res = await apiGet('/agent/assignments/total');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load total assignments');
+  }
+  final list = data?['data'];
+  if (list == null || list is! List) return [];
+  return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
+}
+
+/// Record a "Given" sale: scan an IMEI then sell from a total-assigned product.
+/// New IMEIs are inserted into the system at sale time so they're trackable.
+Future<Map<String, dynamic>> sellGiven({
+  required String imei,
+  required int productId,
+  required String customerName,
+  required double sellingPrice,
+  required int paymentOptionId,
+}) async {
+  final body = <String, dynamic>{
+    'imei': imei,
+    'product_id': productId,
+    'customer_name': customerName,
+    'selling_price': sellingPrice,
+    'payment_option_id': paymentOptionId,
+  };
+  final res = await apiPost('/agent/sell-given', body);
+  final data = jsonDecode(res.body) as Map<String, dynamic>;
+  if (res.statusCode != 201) {
+    throw Exception(data['message']?.toString() ?? 'Given sale failed');
+  }
+  return data['data'] as Map<String, dynamic>;
+}
+
 /// Credit sale (full amount on credit). Optional [customerPhone], [description].
 Future<Map<String, dynamic>> sellDeviceCredit({
   required int productListId,

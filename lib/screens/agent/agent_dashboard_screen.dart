@@ -772,13 +772,12 @@ class _InventorySheet extends StatelessWidget {
     String endpoint,
   ) async {
     try {
-      final path = await downloadInvoicePdf(
+      await downloadReceiptAndNotify(
+        context,
         endpoint: endpoint,
         fallbackFilename:
             'sale-invoice-${DateTime.now().millisecondsSinceEpoch}.pdf',
       );
-      if (!context.mounted) return;
-      await openDownloadedFile(path);
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

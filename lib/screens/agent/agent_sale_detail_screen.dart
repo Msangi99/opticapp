@@ -63,9 +63,21 @@ class _AgentSaleDetailScreenState extends State<AgentSaleDetailScreen> {
   Future<void> _downloadInvoice() async {
     final endpoint = _detail?['invoice_endpoint']?.toString();
     if (endpoint == null || endpoint.isEmpty) return;
-    final path = await downloadInvoicePdf(endpoint: endpoint, fallbackFilename: 'agent-sale-invoice.pdf');
-    if (!mounted) return;
-    await openDownloadedFile(path);
+    try {
+      await downloadReceiptAndNotify(
+        context,
+        endpoint: endpoint,
+        fallbackFilename: 'agent-sale-invoice.pdf',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override

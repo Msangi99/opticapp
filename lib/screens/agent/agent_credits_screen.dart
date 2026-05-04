@@ -103,12 +103,11 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
     final id = _asInt(credit['id']);
     if (id == null) return;
     try {
-      final path = await downloadInvoicePdf(
+      await downloadReceiptAndNotify(
+        context,
         endpoint: '/agent/credits/$id/invoice',
         fallbackFilename: 'agent-credit-invoice-$id.pdf',
       );
-      if (!mounted) return;
-      await openDownloadedFile(path);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
