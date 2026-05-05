@@ -40,16 +40,11 @@ class _SellScreenState extends State<SellScreen>
   bool _scanning = false;
 
   // Given tab state (separate from IMEI-assigned Sell/Credit tabs)
-  List<Map<String, dynamic>> _givenAssignments = [];
-  bool _loadingGiven = false;
   String? _givenScannedImei;
-  int? _givenSelectedProductId;
   bool _givenScanning = false;
   bool _givenSubmitting = false;
   String? _givenError;
-  final _givenCustomerController = TextEditingController();
-  final _givenPriceController = TextEditingController();
-  int? _givenSelectedChannelId;
+  Map<String, dynamic>? _givenScanInfo;
 
   // Payment channel state
   List<Map<String, dynamic>> _regularChannels = [];
@@ -81,30 +76,10 @@ class _SellScreenState extends State<SellScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _priceController.addListener(() => setState(() {}));
-    _givenPriceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
-    _loadTotalAssignments();
     _loadCategoriesForNeed();
     _loadBranchesForLead();
     _loadSaleConfig();
-  }
-
-  Future<void> _loadTotalAssignments() async {
-    setState(() => _loadingGiven = true);
-    try {
-      final list = await getTotalAssignments();
-      if (!mounted) return;
-      setState(() {
-        _givenAssignments = list;
-        _loadingGiven = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _givenAssignments = [];
-        _loadingGiven = false;
-      });
-    }
   }
 
   Future<void> _loadBranchesForLead() async {
@@ -138,9 +113,6 @@ class _SellScreenState extends State<SellScreen>
             : [];
         _watuChannel = rawWatu is Map<String, dynamic> ? rawWatu : null;
         _selectedChannelId = _regularChannels.isNotEmpty
-            ? _parseIntId(_regularChannels.first['id'])
-            : null;
-        _givenSelectedChannelId = _regularChannels.isNotEmpty
             ? _parseIntId(_regularChannels.first['id'])
             : null;
         _loadingConfig = false;
@@ -565,8 +537,11 @@ class _SellScreenState extends State<SellScreen>
       }
 
       final code = barcodes.first.trim();
+      final info = await getGivenAssignmentByImei(code);
+      if (!mounted) return;
       setState(() {
         _givenScannedImei = code;
+        _givenScanInfo = info;
         _givenError = null;
       });
     } catch (e) {
@@ -579,65 +554,14 @@ class _SellScreenState extends State<SellScreen>
     }
   }
 
-  void _onGivenProductSelected(int? productId) {
-    if (productId == null) {
-      setState(() {
-        _givenSelectedProductId = null;
-        _givenPriceController.clear();
-      });
-      return;
-    }
-    final assignment = _givenAssignments.firstWhere(
-      (a) => _parseIntId(a['product_id']) == productId,
-      orElse: () => <String, dynamic>{},
-    );
-    setState(() {
-      _givenSelectedProductId = productId;
-      _givenError = null;
-      final sellPrice = assignment['sell_price'];
-      if (sellPrice != null) {
-        final n = sellPrice is num
-            ? sellPrice
-            : (double.tryParse(sellPrice.toString()) ?? 0.0);
-        _givenPriceController.text = n == n.roundToDouble()
-            ? n.toInt().toString()
-            : n.toStringAsFixed(2);
-      } else {
-        _givenPriceController.clear();
-      }
-    });
-  }
-
-  double? get _givenUnitPrice {
-    final s = _givenPriceController.text.trim();
-    if (s.isEmpty) return null;
-    return double.tryParse(s);
-  }
-
   Future<void> _submitGiven() async {
     final imei = _givenScannedImei?.trim() ?? '';
     if (imei.isEmpty) {
       setState(() => _givenError = 'Scan an IMEI first.');
       return;
     }
-    final pid = _givenSelectedProductId;
-    if (pid == null) {
-      setState(() => _givenError = 'Select a product.');
-      return;
-    }
-    final customer = _givenCustomerController.text.trim();
-    if (customer.isEmpty) {
-      setState(() => _givenError = 'Enter customer name.');
-      return;
-    }
-    final price = _givenUnitPrice;
-    if (price == null || price < 0) {
-      setState(() => _givenError = 'Enter a valid selling price.');
-      return;
-    }
-    final channelId = _givenSelectedChannelId;
-    if (channelId == null) {
-      setState(() => _givenError = 'Select a payment channel.');
+    if (_givenScanInfo == null) {
+      setState(() => _givenError = 'Could not resolve assignment for this IMEI.');
       return;
     }
 
@@ -646,13 +570,7 @@ class _SellScreenState extends State<SellScreen>
       _givenSubmitting = true;
     });
     try {
-      await sellGiven(
-        imei: imei,
-        productId: pid,
-        customerName: customer,
-        sellingPrice: price,
-        paymentOptionId: channelId,
-      );
+      await sellGiven(imei: imei);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -663,14 +581,8 @@ class _SellScreenState extends State<SellScreen>
       );
       setState(() {
         _givenScannedImei = null;
-        _givenSelectedProductId = null;
-        _givenCustomerController.clear();
-        _givenPriceController.clear();
-        _givenSelectedChannelId = _regularChannels.isNotEmpty
-            ? _parseIntId(_regularChannels.first['id'])
-            : null;
+        _givenScanInfo = null;
       });
-      await _loadTotalAssignments();
     } catch (e) {
       if (!mounted) return;
       setState(
@@ -692,8 +604,6 @@ class _SellScreenState extends State<SellScreen>
     _leadCustomerPhoneController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
-    _givenCustomerController.dispose();
-    _givenPriceController.dispose();
     super.dispose();
   }
 
@@ -832,7 +742,7 @@ class _SellScreenState extends State<SellScreen>
                 Tab(
                   child: _SaleTabChip(
                     icon: Icons.point_of_sale_rounded,
-                    label: 'Sell',
+                    label: 'Cash sale',
                   ),
                 ),
                 Tab(
@@ -850,7 +760,7 @@ class _SellScreenState extends State<SellScreen>
                 Tab(
                   child: _SaleTabChip(
                     icon: Icons.inventory_2_rounded,
-                    label: 'Given',
+                    label: 'Assigned',
                   ),
                 ),
               ],
@@ -1278,22 +1188,12 @@ class _SellScreenState extends State<SellScreen>
 
   Widget _buildGivenForm(BuildContext context, ThemeData theme) {
     final scanned = _givenScannedImei != null && _givenScannedImei!.isNotEmpty;
-    final selected = _givenAssignments.firstWhere(
-      (a) => _parseIntId(a['product_id']) == _givenSelectedProductId,
-      orElse: () => <String, dynamic>{},
-    );
-    final remaining = selected.isNotEmpty
-        ? (selected['quantity_remaining'] is num
-              ? (selected['quantity_remaining'] as num).toInt()
-              : int.tryParse(
-                      selected['quantity_remaining']?.toString() ?? '',
-                    ) ??
-                    0)
-        : 0;
-    final unitPrice = _givenUnitPrice;
-    final total = unitPrice != null && unitPrice >= 0
-        ? unitPrice * 1
-        : null;
+    final info = _givenScanInfo;
+    final remaining = info == null
+        ? 0
+        : (info['remaining_total'] is num
+              ? (info['remaining_total'] as num).toInt()
+              : int.tryParse(info['remaining_total']?.toString() ?? '') ?? 0);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1381,6 +1281,7 @@ class _SellScreenState extends State<SellScreen>
                         ? null
                         : () => setState(() {
                             _givenScannedImei = null;
+                            _givenScanInfo = null;
                             _givenError = null;
                           }),
                     child: const Text('Clear'),
@@ -1406,127 +1307,58 @@ class _SellScreenState extends State<SellScreen>
           ],
           if (scanned) ...[
             const SizedBox(height: 20),
-            TextFormField(
-              controller: _givenCustomerController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Customer name',
-                hintText: 'Full name',
-                prefixIcon: Icon(Icons.person_outline_rounded, size: 22),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              readOnly: true,
-              initialValue: '1',
-              decoration: const InputDecoration(
-                labelText: 'Quantity',
-                hintText: 'Fixed at 1',
-                prefixIcon: Icon(Icons.numbers_rounded, size: 22),
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (_loadingGiven)
-              const LinearProgressIndicator()
-            else if (_givenAssignments.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  'No total assignments yet. Ask an admin to assign products by total.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              )
-            else
-              DropdownButtonFormField<int?>(
-                value: _givenSelectedProductId,
-                decoration: const InputDecoration(
-                  labelText: 'Product',
-                  hintText: 'Choose an assigned product',
-                  prefixIcon: Icon(Icons.phone_android_rounded, size: 22),
-                ),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('-- Select product --'),
-                  ),
-                  ..._givenAssignments.map((a) {
-                    final pid = _parseIntId(a['product_id']);
-                    if (pid == null) return null;
-                    final name = a['product_name']?.toString() ?? '–';
-                    final qty = a['quantity_remaining'] is num
-                        ? (a['quantity_remaining'] as num).toInt()
-                        : int.tryParse(
-                                a['quantity_remaining']?.toString() ?? '',
-                              ) ??
-                              0;
-                    return DropdownMenuItem<int?>(
-                      value: pid,
-                      child: Text('$name (left: $qty)'),
-                    );
-                  }).whereType<DropdownMenuItem<int?>>(),
-                ],
-                onChanged: _onGivenProductSelected,
-              ),
-            if (selected.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Remaining for this product: $remaining',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+            if (info != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                decoration: sectionCardDecoration(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Purchase assigned',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      info['purchase_assigned']?.toString() ?? '—',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Model',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      info['model']?.toString() ?? '—',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Remain total',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      remaining.toString(),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(height: 20),
             ],
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _givenPriceController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Sell price (per unit)',
-                hintText: 'Auto from product, edit if needed',
-                prefixIcon: Icon(Icons.attach_money_rounded, size: 22),
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (_loadingConfig)
-              const LinearProgressIndicator()
-            else if (_regularChannels.isEmpty)
-              Text(
-                'No payment channels available. Ask admin to add channels.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              )
-            else
-              DropdownButtonFormField<int?>(
-                value: _givenSelectedChannelId,
-                decoration: const InputDecoration(
-                  labelText: 'Payment channel',
-                  hintText: 'Select channel',
-                  prefixIcon: Icon(
-                    Icons.account_balance_wallet_outlined,
-                    size: 22,
-                  ),
-                ),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('-- Select channel --'),
-                  ),
-                  ..._regularChannels.map((ch) {
-                    final cid = _parseIntId(ch['id']);
-                    return DropdownMenuItem<int?>(
-                      value: cid,
-                      child: Text(ch['name']?.toString() ?? '—'),
-                    );
-                  }),
-                ],
-                onChanged: (v) => setState(() => _givenSelectedChannelId = v),
-              ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(
                 vertical: 16,
@@ -1545,14 +1377,14 @@ class _SellScreenState extends State<SellScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Total price',
+                    'Remain total',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
                   Text(
-                    total != null ? total.toStringAsFixed(2) : '—',
+                    remaining.toString(),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: theme.colorScheme.primary,
@@ -1563,7 +1395,9 @@ class _SellScreenState extends State<SellScreen>
             ),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: (!_givenSubmitting && scanned) ? _submitGiven : null,
+              onPressed: (!_givenSubmitting && scanned && info != null)
+                  ? _submitGiven
+                  : null,
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
               ),
@@ -1576,7 +1410,7 @@ class _SellScreenState extends State<SellScreen>
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Complete Given sale'),
+                  : const Text('Complete Assigned sale'),
             ),
           ],
         ],

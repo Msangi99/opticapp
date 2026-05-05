@@ -48,23 +48,36 @@ Future<InvoiceSaveResult> downloadInvoicePdf({
       _extractFilename(res.headers['content-disposition']) ?? fallbackFilename;
   final safe = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
+  // --- iOS & fallback: app Documents/receipt/ ---
   final baseDir = await getApplicationDocumentsDirectory();
-  final file = File(p.join(baseDir.path, safe));
+  final appReceiptDir = Directory(p.join(baseDir.path, 'receipt'));
+  await appReceiptDir.create(recursive: true);
+  final file = File(p.join(appReceiptDir.path, safe));
   await file.writeAsBytes(res.bodyBytes, flush: true);
 
+  // --- Android: public Downloads/receipt/ ---
   String? publicPath;
   var savedPublic = false;
   if (!kIsWeb && Platform.isAndroid) {
-    final publicDownload = Directory('/storage/emulated/0/Download');
+    final publicReceiptDir = Directory('/storage/emulated/0/Download/receipt');
     try {
-      if (await publicDownload.exists()) {
-        publicPath = p.join(publicDownload.path, safe);
-        await File(publicPath).writeAsBytes(res.bodyBytes, flush: true);
-        savedPublic = true;
-      }
+      await publicReceiptDir.create(recursive: true);
+      publicPath = p.join(publicReceiptDir.path, safe);
+      await File(publicPath).writeAsBytes(res.bodyBytes, flush: true);
+      savedPublic = true;
     } catch (_) {
-      publicPath = null;
-      savedPublic = false;
+      // Fallback: try Downloads root
+      try {
+        final fallbackDir = Directory('/storage/emulated/0/Download');
+        if (await fallbackDir.exists()) {
+          publicPath = p.join(fallbackDir.path, safe);
+          await File(publicPath).writeAsBytes(res.bodyBytes, flush: true);
+          savedPublic = true;
+        }
+      } catch (_) {
+        publicPath = null;
+        savedPublic = false;
+      }
     }
   }
 
@@ -91,9 +104,7 @@ Future<void> downloadReceiptAndNotify(
   if (result.savedToPublicDownloads && result.publicPath != null) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'Receipt saved to Downloads: ${result.filename}',
-        ),
+        content: Text('Receipt saved to Downloads/receipt/${result.filename}'),
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'Open',
@@ -104,6 +115,7 @@ Future<void> downloadReceiptAndNotify(
     return;
   }
 
+  // iOS / fallback: share sheet so user can save to Files app
   try {
     await Share.shareXFiles(
       [
@@ -113,14 +125,14 @@ Future<void> downloadReceiptAndNotify(
           name: result.filename,
         ),
       ],
-      text: 'Receipt — save to Downloads or Files from the share menu.',
+      text: 'Receipt — tap Save to Files and choose a Downloads/receipt folder.',
     );
   } catch (_) {
     await openDownloadedFile(result.path);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Receipt saved as ${result.filename}. Use Open to view it.'),
+        content: Text('Receipt saved as ${result.filename}. Tap Open to view it.'),
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'Open',

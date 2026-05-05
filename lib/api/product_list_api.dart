@@ -137,21 +137,21 @@ Future<List<Map<String, dynamic>>> getTotalAssignments() async {
   return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
 }
 
-/// Record a "Given" sale: scan an IMEI then sell from a total-assigned product.
-/// New IMEIs are inserted into the system at sale time so they're trackable.
-Future<Map<String, dynamic>> sellGiven({
-  required String imei,
-  required int productId,
-  required String customerName,
-  required double sellingPrice,
-  required int paymentOptionId,
-}) async {
+/// Resolve scanned IMEI for total-assignment info in Assigned tab.
+Future<Map<String, dynamic>> getGivenAssignmentByImei(String imei) async {
+  final path = '/agent/assignments/total/by-imei/${Uri.encodeComponent(imei)}';
+  final res = await apiGet(path);
+  final data = jsonDecode(res.body) as Map<String, dynamic>;
+  if (res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Could not resolve IMEI.');
+  }
+  return data['data'] as Map<String, dynamic>? ?? {};
+}
+
+/// Record an Assigned sale by scanned IMEI only.
+Future<Map<String, dynamic>> sellGiven({required String imei}) async {
   final body = <String, dynamic>{
     'imei': imei,
-    'product_id': productId,
-    'customer_name': customerName,
-    'selling_price': sellingPrice,
-    'payment_option_id': paymentOptionId,
   };
   final res = await apiPost('/agent/sell-given', body);
   final data = jsonDecode(res.body) as Map<String, dynamic>;
