@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'client.dart';
 
 /// List all expenses for admin.
@@ -61,15 +60,7 @@ Future<void> updateExpense({
 }
 
 Future<void> deleteExpense(int id) async {
-  final token = await getStoredToken();
-  final uri = Uri.parse('$baseUrl/admin/expenses/$id');
-  final res = await http.delete(
-    uri,
-    headers: {
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    },
-  );
+  final res = await apiDelete('/admin/expenses/$id');
   final data = jsonDecode(res.body) as Map<String, dynamic>?;
   if (res.statusCode != 200) {
     throw Exception(data?['message']?.toString() ?? 'Failed to delete expense');

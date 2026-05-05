@@ -3,7 +3,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../api/agent_catalog_api.dart';
 import '../../api/agent_dashboard_api.dart';
-import '../../api/payment_options_api.dart';
 import '../../api/product_list_api.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
@@ -709,22 +708,7 @@ class _SellScreenState extends State<SellScreen>
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Material(
-            color: theme.colorScheme.surface,
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              labelColor: theme.colorScheme.primary,
-              unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-              tabs: const [
-                Tab(text: 'Sell'),
-                Tab(text: 'Credit Sale'),
-                Tab(text: 'Lead'),
-                Tab(text: 'Given'),
-              ],
-            ),
-          ),
+          _buildRecordSaleTabBar(context),
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -773,6 +757,106 @@ class _SellScreenState extends State<SellScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Pill-style segmented tabs aligned with agent brand (orange / slate).
+  Widget _buildRecordSaleTabBar(BuildContext context) {
+    final theme = Theme.of(context);
+    const brandOrange = Color(0xFFFA8900);
+    const textPrimary = Color(0xFF0F172A);
+    const textMuted = Color(0xFF64748B);
+    const track = Color(0xFFEEF2F7);
+    const border = Color(0xFFE2E8F0);
+
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: track,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorPadding: const EdgeInsets.symmetric(
+                horizontal: 2,
+                vertical: 2,
+              ),
+              indicator: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.white,
+                border: Border.all(
+                  color: brandOrange.withValues(alpha: 0.35),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: brandOrange.withValues(alpha: 0.14),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              labelColor: textPrimary,
+              unselectedLabelColor: textMuted,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+              labelStyle: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                letterSpacing: -0.2,
+              ),
+              unselectedLabelStyle: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                letterSpacing: -0.2,
+              ),
+              splashFactory: NoSplash.splashFactory,
+              overlayColor: WidgetStateProperty.all(Colors.transparent),
+              tabs: const [
+                Tab(
+                  child: _SaleTabChip(
+                    icon: Icons.point_of_sale_rounded,
+                    label: 'Sell',
+                  ),
+                ),
+                Tab(
+                  child: _SaleTabChip(
+                    icon: Icons.credit_card_rounded,
+                    label: 'Credit Sale',
+                  ),
+                ),
+                Tab(
+                  child: _SaleTabChip(
+                    icon: Icons.contact_mail_outlined,
+                    label: 'Lead',
+                  ),
+                ),
+                Tab(
+                  child: _SaleTabChip(
+                    icon: Icons.inventory_2_rounded,
+                    label: 'Given',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1659,6 +1743,41 @@ class _SellScreenState extends State<SellScreen>
                     ),
                   )
                 : const Text('Submit lead'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact icon + label row for [TabBar] tabs; inherits label / icon colors from [TabBar].
+class _SaleTabChip extends StatelessWidget {
+  const _SaleTabChip({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = DefaultTextStyle.of(context).style;
+    final iconColor =
+        IconTheme.of(context).color ?? Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: baseStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

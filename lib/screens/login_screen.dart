@@ -13,6 +13,8 @@ const String _kAppIconAsset = 'assets/icons/app_icon.png';
 
 enum _AuthView { signIn, signUp, signUpAgent, signUpDealer, forgot }
 
+enum _ApiSettingsOutcome { saved, useDefault }
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -85,6 +87,22 @@ class _LoginScreenState extends State<LoginScreen> {
   void _snack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openApiSettings() async {
+    final existing = await getApiBaseUrlOverride();
+    if (!mounted) return;
+    final outcome = await showDialog<_ApiSettingsOutcome>(
+      context: context,
+      builder: (ctx) => _ApiServerSettingsDialog(initialOverride: existing),
+    );
+    if (!mounted || outcome == null) return;
+    switch (outcome) {
+      case _ApiSettingsOutcome.saved:
+        _snack('API address saved.');
+      case _ApiSettingsOutcome.useDefault:
+        _snack('Using built-in API server.');
+    }
   }
 
   @override
@@ -615,41 +633,163 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 8),
-                      _heroImage(),
-                      const SizedBox(height: 20),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(22, 26, 22, 28),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.07),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 8),
+                          _heroImage(),
+                          const SizedBox(height: 20),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(22, 26, 22, 28),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.07),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: body,
+                            child: body,
+                          ),
+                          const SizedBox(height: 32),
+                        ],
                       ),
-                      const SizedBox(height: 32),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Material(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    shape: const CircleBorder(),
+                    elevation: 1,
+                    shadowColor: Colors.black26,
+                    child: IconButton(
+                      tooltip: 'Server settings',
+                      onPressed: _loading ? null : _openApiSettings,
+                      icon: const Icon(Icons.settings_outlined),
+                      color: _authTitle,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ApiServerSettingsDialog extends StatefulWidget {
+  const _ApiServerSettingsDialog({required this.initialOverride});
+
+  final String? initialOverride;
+
+  @override
+  State<_ApiServerSettingsDialog> createState() => _ApiServerSettingsDialogState();
+}
+
+class _ApiServerSettingsDialogState extends State<_ApiServerSettingsDialog> {
+  late final TextEditingController _urlController;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController = TextEditingController(text: widget.initialOverride ?? '');
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  String? _validateOptionalApiUrl(String value) {
+    final t = value.trim();
+    if (t.isEmpty) return null;
+    final u = Uri.tryParse(t);
+    if (u == null || !u.hasScheme || (u.scheme != 'http' && u.scheme != 'https')) {
+      return 'Enter a valid http or https URL';
+    }
+    if (u.host.isEmpty) return 'Enter a valid http or https URL';
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Server settings'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'API base URL (include /api if your server uses it). Leave empty to use the built-in server.',
+                style: TextStyle(color: _authMuted, fontSize: 13, height: 1.35),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Default: $kInternalApiBaseUrl',
+                style: TextStyle(color: _authMuted.withValues(alpha: 0.85), fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _urlController,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  hintText: kInternalApiBaseUrl,
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => _validateOptionalApiUrl(v ?? ''),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () async {
+            await setApiBaseUrlOverride(null);
+            if (!context.mounted) return;
+            Navigator.pop(context, _ApiSettingsOutcome.useDefault);
+          },
+          child: Text('Use default', style: TextStyle(color: _authMuted)),
+        ),
+        FilledButton(
+          onPressed: () async {
+            if (!(_formKey.currentState?.validate() ?? false)) return;
+            await setApiBaseUrlOverride(_urlController.text);
+            if (!context.mounted) return;
+            Navigator.pop(context, _ApiSettingsOutcome.saved);
+          },
+          style: FilledButton.styleFrom(backgroundColor: _authYellow, foregroundColor: Colors.white),
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }

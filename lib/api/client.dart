@@ -2,8 +2,45 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Base URL for Laravel API. Change for production.
-const String baseUrl = 'https://opticedgeafrica.net/api'; // Android emulator -> localhost
+/// Default API root when no custom URL is saved (full path including `/api`).
+const String kInternalApiBaseUrl = 'https://opticedgeafrica.net/api';
+
+const String _prefsKeyApiBaseUrlOverride = 'api_base_url_override';
+
+String _normalizeApiBaseUrl(String url) {
+  var s = url.trim();
+  while (s.endsWith('/')) {
+    s = s.substring(0, s.length - 1);
+  }
+  return s;
+}
+
+/// Resolved URL used for every request: saved override if non-empty, otherwise [kInternalApiBaseUrl].
+Future<String> resolveBaseUrl() async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(_prefsKeyApiBaseUrlOverride);
+  final trimmed = raw?.trim();
+  if (trimmed == null || trimmed.isEmpty) return kInternalApiBaseUrl;
+  return _normalizeApiBaseUrl(trimmed);
+}
+
+/// Clears override when [url] is null or blank so [kInternalApiBaseUrl] is used.
+Future<void> setApiBaseUrlOverride(String? url) async {
+  final prefs = await SharedPreferences.getInstance();
+  final t = url?.trim();
+  if (t == null || t.isEmpty) {
+    await prefs.remove(_prefsKeyApiBaseUrlOverride);
+  } else {
+    await prefs.setString(_prefsKeyApiBaseUrlOverride, _normalizeApiBaseUrl(t));
+  }
+}
+
+Future<String?> getApiBaseUrlOverride() async {
+  final prefs = await SharedPreferences.getInstance();
+  final s = prefs.getString(_prefsKeyApiBaseUrlOverride);
+  if (s == null || s.trim().isEmpty) return null;
+  return _normalizeApiBaseUrl(s);
+}
 
 Future<String?> getStoredToken() async {
   final prefs = await SharedPreferences.getInstance();
@@ -38,9 +75,10 @@ Future<void> setStoredUser(Map<String, dynamic> user) async {
 }
 
 Future<http.Response> apiGet(String path, {String? token}) async {
+  final base = await resolveBaseUrl();
   final t = token ?? await getStoredToken();
   return http.get(
-    Uri.parse('$baseUrl$path'),
+    Uri.parse('$base$path'),
     headers: {
       'Accept': 'application/json',
       if (t != null) 'Authorization': 'Bearer $t',
@@ -49,9 +87,10 @@ Future<http.Response> apiGet(String path, {String? token}) async {
 }
 
 Future<http.Response> apiPost(String path, Map<String, dynamic> body, {String? token}) async {
+  final base = await resolveBaseUrl();
   final t = token ?? await getStoredToken();
   return http.post(
-    Uri.parse('$baseUrl$path'),
+    Uri.parse('$base$path'),
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
@@ -62,9 +101,36 @@ Future<http.Response> apiPost(String path, Map<String, dynamic> body, {String? t
 }
 
 Future<http.Response> apiPut(String path, Map<String, dynamic> body, {String? token}) async {
+  final base = await resolveBaseUrl();
   final t = token ?? await getStoredToken();
   return http.put(
-    Uri.parse('$baseUrl$path'),
+    Uri.parse('$base$path'),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      if (t != null) 'Authorization': 'Bearer $t',
+    },
+    body: jsonEncode(body),
+  );
+}
+
+Future<http.Response> apiDelete(String path, {String? token}) async {
+  final base = await resolveBaseUrl();
+  final t = token ?? await getStoredToken();
+  return http.delete(
+    Uri.parse('$base$path'),
+    headers: {
+      'Accept': 'application/json',
+      if (t != null) 'Authorization': 'Bearer $t',
+    },
+  );
+}
+
+Future<http.Response> apiPatch(String path, Map<String, dynamic> body, {String? token}) async {
+  final base = await resolveBaseUrl();
+  final t = token ?? await getStoredToken();
+  return http.patch(
+    Uri.parse('$base$path'),
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',

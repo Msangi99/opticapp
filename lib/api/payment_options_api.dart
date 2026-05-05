@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'client.dart';
 
 /// List all payment options (channels) for admin.
@@ -55,15 +54,7 @@ Future<void> updatePaymentOption({
 }
 
 Future<void> deletePaymentOption(int id) async {
-  final token = await getStoredToken();
-  final uri = Uri.parse('$baseUrl/admin/payment-options/$id');
-  final res = await http.delete(
-    uri,
-    headers: {
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    },
-  );
+  final res = await apiDelete('/admin/payment-options/$id');
   final data = jsonDecode(res.body) as Map<String, dynamic>?;
   if (res.statusCode != 200) {
     throw Exception(data?['message']?.toString() ?? 'Failed to delete payment option');
@@ -71,17 +62,7 @@ Future<void> deletePaymentOption(int id) async {
 }
 
 Future<void> togglePaymentOptionVisibility(int id) async {
-  final token = await getStoredToken();
-  final uri = Uri.parse('$baseUrl/admin/payment-options/$id/toggle-visibility');
-  final res = await http.patch(
-    uri,
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    },
-    body: jsonEncode({}),
-  );
+  final res = await apiPatch('/admin/payment-options/$id/toggle-visibility', {});
   final data = jsonDecode(res.body) as Map<String, dynamic>?;
   if (res.statusCode != 200) {
     throw Exception(data?['message']?.toString() ?? 'Failed to update visibility');
