@@ -74,7 +74,7 @@ class _SellScreenState extends State<SellScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _priceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
     _loadCategoriesForNeed();
@@ -659,10 +659,6 @@ class _SellScreenState extends State<SellScreen>
                   padding: const EdgeInsets.all(20),
                   child: _buildNeededForm(context, theme),
                 ),
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: _buildGivenForm(context, theme),
-                ),
               ],
             ),
           ),
@@ -755,12 +751,6 @@ class _SellScreenState extends State<SellScreen>
                   child: _SaleTabChip(
                     icon: Icons.contact_mail_outlined,
                     label: 'Lead',
-                  ),
-                ),
-                Tab(
-                  child: _SaleTabChip(
-                    icon: Icons.inventory_2_rounded,
-                    label: 'Assigned',
                   ),
                 ),
               ],
