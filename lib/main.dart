@@ -33,8 +33,19 @@ import 'screens/agent/agent_sales_history_screen.dart';
 import 'screens/agent/agent_sale_detail_screen.dart';
 import 'screens/agent/agent_leads_screen.dart';
 import 'screens/agent/agent_lead_detail_screen.dart';
+import 'screens/agent/agent_return_devices_screen.dart';
 import 'screens/admin/admin_agent_transfers_screen.dart';
 import 'screens/admin/admin_branch_transfer_screen.dart';
+import 'screens/regional_manager/regional_manager_assign_team_leader_screen.dart';
+import 'screens/regional_manager/regional_manager_dashboard_screen.dart';
+import 'screens/regional_manager/regional_manager_imei_register_screen.dart';
+import 'screens/regional_manager/regional_manager_profile_screen.dart';
+import 'screens/regional_manager/regional_manager_return_devices_screen.dart';
+import 'screens/team_leader/team_leader_assign_agent_screen.dart';
+import 'screens/team_leader/team_leader_dashboard_screen.dart';
+import 'screens/team_leader/team_leader_imei_register_screen.dart';
+import 'screens/team_leader/team_leader_profile_screen.dart';
+import 'screens/team_leader/team_leader_return_devices_screen.dart';
 
 void main() {
   runApp(const OpticApp());
@@ -77,6 +88,7 @@ class OpticApp extends StatelessWidget {
         '/agent/sell': (context) => const SellScreen(),
         '/agent/credits': (context) => const AgentCreditsScreen(),
         '/agent/transfer': (context) => const AgentTransferScreen(),
+        '/agent/return-devices': (context) => const AgentReturnDevicesScreen(),
         '/agent/transfers': (context) => const AgentMyTransfersScreen(),
         '/agent/transfers/detail': (context) => const AgentTransferDetailScreen(),
         '/agent/credits/detail': (context) => const AgentCreditDetailScreen(),
@@ -84,6 +96,16 @@ class OpticApp extends StatelessWidget {
         '/agent/sales/detail': (context) => const AgentSaleDetailScreen(),
         '/agent/leads': (context) => const AgentLeadsScreen(),
         '/agent/leads/detail': (context) => const AgentLeadDetailScreen(),
+        '/regional-manager/dashboard': (context) => const RegionalManagerDashboardScreen(),
+        '/regional-manager/imei-register': (context) => const RegionalManagerImeiRegisterScreen(),
+        '/regional-manager/assign-team-leader': (context) => const RegionalManagerAssignTeamLeaderScreen(),
+        '/regional-manager/return-devices': (context) => const RegionalManagerReturnDevicesScreen(),
+        '/regional-manager/profile': (context) => const RegionalManagerProfileScreen(),
+        '/team-leader/dashboard': (context) => const TeamLeaderDashboardScreen(),
+        '/team-leader/imei-register': (context) => const TeamLeaderImeiRegisterScreen(),
+        '/team-leader/assign-agent': (context) => const TeamLeaderAssignAgentScreen(),
+        '/team-leader/return-devices': (context) => const TeamLeaderReturnDevicesScreen(),
+        '/team-leader/profile': (context) => const TeamLeaderProfileScreen(),
         '/home': (context) => const _PlaceholderHome(),
       },
       home: const _AuthChecker(),
@@ -112,12 +134,20 @@ class _AuthCheckerState extends State<_AuthChecker> {
     if (!mounted) return;
     if (token != null && user != null) {
       final role = user['role'] as String?;
-      if (role == 'admin') {
+      if (role == 'admin' || role == 'subadmin') {
         Navigator.pushReplacementNamed(context, '/admin/dashboard');
         return;
       }
       if (role == 'agent') {
         Navigator.pushReplacementNamed(context, '/agent/dashboard');
+        return;
+      }
+      if (role == 'regional_manager') {
+        Navigator.pushReplacementNamed(context, '/regional-manager/dashboard');
+        return;
+      }
+      if (role == 'teamleader') {
+        Navigator.pushReplacementNamed(context, '/team-leader/dashboard');
         return;
       }
     }

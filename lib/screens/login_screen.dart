@@ -68,10 +68,14 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = await getStoredUser();
       if (!mounted) return;
       final role = user?['role'] as String?;
-      if (role == 'admin') {
+      if (role == 'admin' || role == 'subadmin') {
         Navigator.pushReplacementNamed(context, '/admin/dashboard');
       } else if (role == 'agent') {
         Navigator.pushReplacementNamed(context, '/agent/dashboard');
+      } else if (role == 'regional_manager') {
+        Navigator.pushReplacementNamed(context, '/regional-manager/dashboard');
+      } else if (role == 'teamleader') {
+        Navigator.pushReplacementNamed(context, '/team-leader/dashboard');
       } else {
         Navigator.pushReplacementNamed(context, '/home');
       }

@@ -20,11 +20,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<Map<String, dynamic>> _agentSales = [];
   bool _loading = true;
   String? _error;
+  late DateTime _filterStart;
+  late DateTime _filterEnd;
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _filterEnd = DateTime(now.year, now.month, now.day);
+    _filterStart = _filterEnd.subtract(const Duration(days: 30));
     _load();
+  }
+
+  String _fmtDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDate({required bool isStart}) async {
+    final initial = isStart ? _filterStart : _filterEnd;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (isStart) {
+        _filterStart = picked;
+      } else {
+        _filterEnd = picked;
+      }
+    });
   }
 
   Future<void> _load() async {
@@ -33,7 +59,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _error = null;
     });
     try {
-      final data = await getDashboardData();
+      final data = await getDashboardData(
+        startDate: _fmtDate(_filterStart),
+        endDate: _fmtDate(_filterEnd),
+      );
       List<Map<String, dynamic>> purchases = [];
       List<Map<String, dynamic>> agentSales = [];
       
@@ -312,6 +341,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildWelcomeHero(context),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () => _pickDate(isStart: true),
+                                      child: Text('From ${_fmtDate(_filterStart)}'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () => _pickDate(isStart: false),
+                                      child: Text('To ${_fmtDate(_filterEnd)}'),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _load,
+                                    tooltip: 'Apply date range',
+                                    icon: const Icon(Icons.filter_alt_rounded),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 24),
                               // Stats Grid
                               _buildStatsGrid(),

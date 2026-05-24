@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../api/orders_api.dart';
+import '../../api/payment_options_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 
@@ -16,8 +17,20 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Map<String, dynamic>? _order;
+  List<Map<String, dynamic>> _channels = [];
   bool _loading = true;
+  bool _saving = false;
   String? _error;
+  String? _editStatus;
+  int? _editPaymentOptionId;
+
+  static const _statusOptions = [
+    'pending',
+    'processed',
+    'on the way',
+    'delivered',
+    'cancelled',
+  ];
 
   @override
   void initState() {
@@ -31,10 +44,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       _error = null;
     });
     try {
-      final o = await getOrder(widget.orderId);
+      final results = await Future.wait([
+        getOrder(widget.orderId),
+        getPaymentOptions(),
+      ]);
+      final o = results[0] as Map<String, dynamic>;
+      final channels = results[1] as List<Map<String, dynamic>>;
       if (!mounted) return;
       setState(() {
         _order = o;
+        _channels = channels;
+        _editStatus = o['status']?.toString() ?? 'pending';
+        final pid = o['payment_option_id'];
+        _editPaymentOptionId = pid is int ? pid : (pid is num ? pid.toInt() : int.tryParse('$pid'));
         _loading = false;
       });
     } catch (e) {
@@ -69,6 +91,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final a = order['address'];
     if (a is Map) return Map<String, dynamic>.from(a);
     return null;
+  }
+
+  Future<void> _saveOrder() async {
+    if (_editStatus == null) return;
+    setState(() => _saving = true);
+    try {
+      final updated = await updateOrder(
+        orderId: widget.orderId,
+        status: _editStatus!,
+        paymentOptionId: _editPaymentOptionId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _order = updated;
+        _saving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order updated')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   @override
@@ -122,6 +170,58 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: sectionCardDecoration(context),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    'Update order',
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  DropdownButtonFormField<String>(
+                                    value: _editStatus,
+                                    decoration: const InputDecoration(labelText: 'Status'),
+                                    items: _statusOptions
+                                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                                        .toList(),
+                                    onChanged: (v) => setState(() => _editStatus = v),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  DropdownButtonFormField<int?>(
+                                    value: _editPaymentOptionId,
+                                    decoration: const InputDecoration(labelText: 'Payment channel'),
+                                    items: [
+                                      const DropdownMenuItem<int?>(value: null, child: Text('None')),
+                                      ..._channels.map((c) {
+                                        final id = c['id'];
+                                        final cid = id is int ? id : (id is num ? id.toInt() : null);
+                                        if (cid == null) return null;
+                                        return DropdownMenuItem<int?>(
+                                          value: cid,
+                                          child: Text(c['name']?.toString() ?? 'Channel'),
+                                        );
+                                      }).whereType<DropdownMenuItem<int?>>(),
+                                    ],
+                                    onChanged: (v) => setState(() => _editPaymentOptionId = v),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  FilledButton(
+                                    onPressed: _saving ? null : _saveOrder,
+                                    child: _saving
+                                        ? const SizedBox(
+                                            height: 22,
+                                            width: 22,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                          )
+                                        : const Text('Save changes'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
                             _SummaryCard(order: _order!, formatCurrency: _formatCurrency, formatDate: _formatDate),
                             const SizedBox(height: 12),
                             _CustomerCard(order: _order!),

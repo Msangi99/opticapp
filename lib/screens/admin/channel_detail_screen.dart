@@ -90,6 +90,50 @@ class _ChannelDetailScreenState extends State<ChannelDetailScreen> {
                     const SizedBox(height: 8),
                     OutlinedButton(
                       onPressed: () async {
+                        final amountController = TextEditingController();
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Shrink balance'),
+                            content: TextField(
+                              controller: amountController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Amount to remove (TZS)',
+                              ),
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Shrink'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true || !mounted) return;
+                        final amount = double.tryParse(amountController.text.trim());
+                        amountController.dispose();
+                        if (amount == null || amount <= 0) return;
+                        try {
+                          await shrinkPaymentOptionBalance(id: widget.channelId, shrinkAmount: amount);
+                          if (!mounted) return;
+                          _load();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Balance reduced')),
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                          );
+                        }
+                      },
+                      child: const Text('Shrink balance'),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () async {
                         await deletePaymentOption(widget.channelId);
                         if (!mounted) return;
                         Navigator.pop(context, true);

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/client.dart';
 
-/// Brand colors matching Laravel admin.
 const Color _kBrandDark = Color(0xFF232F3E);
 const Color _kBrandOrange = Color(0xFFFA8900);
 const Color _kDrawerCanvas = Color(0xFFF1F5F9);
@@ -10,15 +9,13 @@ const Color _kPanelBorder = Color(0xFFE2E8F0);
 const Color _kTextPrimary = Color(0xFF0F172A);
 const Color _kTextMuted = Color(0xFF64748B);
 
-/// Agent scaffold. Drawer only on dashboard; other pages get back arrow.
-class AgentScaffold extends StatefulWidget {
-  const AgentScaffold({
+class RegionalManagerScaffold extends StatefulWidget {
+  const RegionalManagerScaffold({
     super.key,
     required this.title,
     required this.body,
     this.actions,
     this.showDrawer = false,
-    this.floatingActionButton,
     this.leading,
   });
 
@@ -26,14 +23,13 @@ class AgentScaffold extends StatefulWidget {
   final Widget body;
   final List<Widget>? actions;
   final bool showDrawer;
-  final Widget? floatingActionButton;
   final Widget? leading;
 
   @override
-  State<AgentScaffold> createState() => _AgentScaffoldState();
+  State<RegionalManagerScaffold> createState() => _RegionalManagerScaffoldState();
 }
 
-class _AgentScaffoldState extends State<AgentScaffold> {
+class _RegionalManagerScaffoldState extends State<RegionalManagerScaffold> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -81,36 +77,45 @@ class _AgentScaffoldState extends State<AgentScaffold> {
           ),
         ),
       ),
-      drawer: widget.showDrawer ? const _AgentDrawer() : null,
+      drawer: widget.showDrawer ? const _RegionalManagerDrawer() : null,
       body: widget.body,
-      floatingActionButton: widget.floatingActionButton,
     );
   }
 }
 
 class _NavItem {
-  const _NavItem({required this.icon, required this.label, required this.route});
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.route,
+    this.comingSoon = false,
+  });
 
   final IconData icon;
   final String label;
-  final String route;
+  final String? route;
+  final bool comingSoon;
 }
 
-class _AgentDrawer extends StatelessWidget {
-  const _AgentDrawer();
-
-  static const _sectionSpacing = 14.0;
+class _RegionalManagerDrawer extends StatelessWidget {
+  const _RegionalManagerDrawer();
 
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
 
-    void navigate(String routeName) {
+    void navigate(_NavItem item) {
       Navigator.pop(context);
-      if (routeName == '/agent/dashboard') {
-        Navigator.pushReplacementNamed(context, routeName);
-      } else {
-        Navigator.pushNamed(context, routeName);
+      if (item.comingSoon) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${item.label} — coming soon on mobile')),
+        );
+        return;
+      }
+      if (item.route == '/regional-manager/dashboard') {
+        Navigator.pushReplacementNamed(context, item.route!);
+      } else if (item.route != null) {
+        Navigator.pushNamed(context, item.route!);
       }
     }
 
@@ -123,39 +128,56 @@ class _AgentDrawer extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            const _AgentDrawerHeader(),
+            const _DrawerHeader(badge: 'REGIONAL MANAGER'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                 children: [
                   _DrawerSectionCard(
-                    title: 'Dashboard',
+                    title: 'Overview',
                     primary: primary,
                     items: const [
-                      _NavItem(icon: Icons.dashboard_rounded, label: 'Main dashboard', route: '/agent/dashboard'),
+                      _NavItem(
+                        icon: Icons.dashboard_rounded,
+                        label: 'Regional overview',
+                        route: '/regional-manager/dashboard',
+                      ),
                     ],
                     onNavigate: navigate,
                   ),
-                  const SizedBox(height: _sectionSpacing),
+                  const SizedBox(height: 14),
                   _DrawerSectionCard(
-                    title: 'Sales',
+                    title: 'Inventory',
                     primary: primary,
                     items: const [
-                      _NavItem(icon: Icons.sell_rounded, label: 'Record sale', route: '/agent/sell'),
-                      _NavItem(icon: Icons.receipt_long_rounded, label: 'Sales history', route: '/agent/sales'),
-                      _NavItem(icon: Icons.credit_score_rounded, label: 'Credit', route: '/agent/credits'),
-                      _NavItem(icon: Icons.person_search_rounded, label: 'Leads', route: '/agent/leads'),
+                      _NavItem(
+                        icon: Icons.qr_code_2_rounded,
+                        label: 'IMEI register',
+                        route: '/regional-manager/imei-register',
+                      ),
+                      _NavItem(
+                        icon: Icons.group_add_rounded,
+                        label: 'Assign to team leader',
+                        route: '/regional-manager/assign-team-leader',
+                      ),
+                      _NavItem(
+                        icon: Icons.undo_rounded,
+                        label: 'Return to admin',
+                        route: '/regional-manager/return-devices',
+                      ),
                     ],
                     onNavigate: navigate,
                   ),
-                  const SizedBox(height: _sectionSpacing),
+                  const SizedBox(height: 14),
                   _DrawerSectionCard(
-                    title: 'Transfers',
+                    title: 'Account',
                     primary: primary,
                     items: const [
-                      _NavItem(icon: Icons.swap_horiz_rounded, label: 'Transfer devices', route: '/agent/transfer'),
-                      _NavItem(icon: Icons.list_alt_rounded, label: 'Transfer requests', route: '/agent/transfers'),
-                      _NavItem(icon: Icons.undo_rounded, label: 'Return devices', route: '/agent/return-devices'),
+                      _NavItem(
+                        icon: Icons.person_outline_rounded,
+                        label: 'Profile',
+                        route: '/regional-manager/profile',
+                      ),
                     ],
                     onNavigate: navigate,
                   ),
@@ -169,13 +191,6 @@ class _AgentDrawer extends StatelessWidget {
                   color: _kPanel,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _kPanelBorder.withValues(alpha: 0.9)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
@@ -186,7 +201,12 @@ class _AgentDrawer extends StatelessWidget {
                     iconTint: const Color(0xFFDC2626),
                     iconBackground: const Color(0xFFFEE2E2),
                     showChevron: false,
-                    onTap: () => _logout(context),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await clearStoredAuth();
+                      if (!context.mounted) return;
+                      Navigator.pushReplacementNamed(context, '/login');
+                    },
                   ),
                 ),
               ),
@@ -196,12 +216,71 @@ class _AgentDrawer extends StatelessWidget {
       ),
     );
   }
+}
 
-  Future<void> _logout(BuildContext context) async {
-    Navigator.pop(context);
-    await clearStoredAuth();
-    if (!context.mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
+class _DrawerHeader extends StatelessWidget {
+  const _DrawerHeader({required this.badge});
+
+  final String badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'opticedg',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.6,
+                    ),
+              ),
+              Text(
+                'eafrica',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: _kBrandOrange,
+                      letterSpacing: -0.6,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: _kBrandOrange,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              badge,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: _kBrandDark,
+                    letterSpacing: 0.8,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -215,7 +294,7 @@ class _DrawerSectionCard extends StatelessWidget {
 
   final String title;
   final List<_NavItem> items;
-  final void Function(String route) onNavigate;
+  final void Function(_NavItem item) onNavigate;
   final Color primary;
 
   @override
@@ -240,13 +319,6 @@ class _DrawerSectionCard extends StatelessWidget {
             color: _kPanel,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _kPanelBorder.withValues(alpha: 0.9)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -264,7 +336,7 @@ class _DrawerSectionCard extends StatelessWidget {
                     icon: items[i].icon,
                     label: items[i].label,
                     primary: primary,
-                    onTap: () => onNavigate(items[i].route),
+                    onTap: () => onNavigate(items[i]),
                   ),
                 ],
               ],
@@ -304,8 +376,6 @@ class _DrawerNavRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: primary.withValues(alpha: 0.08),
-        highlightColor: primary.withValues(alpha: 0.05),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           child: Row(
@@ -327,9 +397,7 @@ class _DrawerNavRow extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                         fontSize: 14.5,
-                        height: 1.25,
                         color: _kTextPrimary,
-                        letterSpacing: -0.1,
                       ),
                 ),
               ),
@@ -338,82 +406,6 @@ class _DrawerNavRow extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AgentDrawerHeader extends StatelessWidget {
-  const _AgentDrawerHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E293B),
-            Color(0xFF0F172A),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'opticedg',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.6,
-                      height: 1.1,
-                    ),
-              ),
-              Text(
-                'eafrica',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: _kBrandOrange,
-                      letterSpacing: -0.6,
-                      height: 1.1,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: _kBrandOrange,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              'AGENT',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: _kBrandDark,
-                    letterSpacing: 1.0,
-                  ),
-            ),
-          ),
-        ],
       ),
     );
   }

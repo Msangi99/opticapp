@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../api/agent_sales_api.dart';
+import '../../api/payment_options_api.dart';
 import 'admin_scaffold.dart';
 import 'widgets/admin_page_ui.dart';
 
@@ -57,6 +58,104 @@ class _AgentSalesScreenState extends State<AgentSalesScreen> {
     } catch (_) {
       return dateString;
     }
+  }
+
+  int? _parseId(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  Future<void> _editSale(Map<String, dynamic> sale) async {
+    final saleId = _parseId(sale['id']);
+    if (saleId == null) return;
+
+    List<Map<String, dynamic>> channels = [];
+    try {
+      channels = await getPaymentOptions();
+    } catch (_) {}
+
+    if (!mounted) return;
+    int? channelId = _parseId(sale['payment_option_id']);
+    final commissionController = TextEditingController(
+      text: ((sale['commission_paid'] as num?)?.toDouble() ?? 0).toString(),
+    );
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: StatefulBuilder(
+            builder: (ctx, setModalState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Edit sale #$saleId', style: Theme.of(ctx).textTheme.titleMedium),
+                  const SizedBox(height: 16),
+                  if (channels.isNotEmpty)
+                    DropdownButtonFormField<int?>(
+                      value: channelId,
+                      decoration: const InputDecoration(labelText: 'Payment channel'),
+                      items: [
+                        const DropdownMenuItem<int?>(value: null, child: Text('Not set')),
+                        ...channels.map((c) {
+                          final id = _parseId(c['id']);
+                          if (id == null) return null;
+                          return DropdownMenuItem<int?>(
+                            value: id,
+                            child: Text(c['name']?.toString() ?? 'Channel'),
+                          );
+                        }).whereType<DropdownMenuItem<int?>>(),
+                      ],
+                      onChanged: (v) => setModalState(() => channelId = v),
+                    ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: commissionController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Commission paid (TZS)'),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () async {
+                      try {
+                        if (channelId != null) {
+                          await updateAgentSaleChannel(id: saleId, paymentOptionId: channelId!);
+                        }
+                        final commission = double.tryParse(commissionController.text.trim());
+                        if (commission != null) {
+                          await updateAgentSaleCommission(id: saleId, commissionPaid: commission);
+                        }
+                        if (ctx.mounted) Navigator.pop(ctx, true);
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Save'),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    commissionController.dispose();
+    if (saved == true) _load();
   }
 
   @override
@@ -145,6 +244,15 @@ class _AgentSalesScreenState extends State<AgentSalesScreen> {
                                               ),
                                         ),
                                       ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton.icon(
+                                        onPressed: () => _editSale(s),
+                                        icon: const Icon(Icons.edit_outlined, size: 18),
+                                        label: const Text('Edit channel / commission'),
+                                      ),
                                     ),
                                   ],
                                 ),

@@ -61,6 +61,19 @@ Future<void> deletePaymentOption(int id) async {
   }
 }
 
+Future<void> shrinkPaymentOptionBalance({
+  required int id,
+  required double shrinkAmount,
+}) async {
+  final res = await apiPatch('/admin/payment-options/$id/shrink-balance', {
+    'shrink_amount': shrinkAmount,
+  });
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to shrink balance');
+  }
+}
+
 Future<void> togglePaymentOptionVisibility(int id) async {
   final res = await apiPatch('/admin/payment-options/$id/toggle-visibility', {});
   final data = jsonDecode(res.body) as Map<String, dynamic>?;

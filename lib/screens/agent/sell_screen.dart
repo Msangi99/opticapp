@@ -74,7 +74,7 @@ class _SellScreenState extends State<SellScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _priceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
     _loadCategoriesForNeed();
@@ -657,6 +657,10 @@ class _SellScreenState extends State<SellScreen>
                 ),
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
+                  child: _buildGivenForm(context, theme),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
                   child: _buildNeededForm(context, theme),
                 ),
               ],
@@ -745,6 +749,12 @@ class _SellScreenState extends State<SellScreen>
                   child: _SaleTabChip(
                     icon: Icons.credit_card_rounded,
                     label: 'Credit Sale',
+                  ),
+                ),
+                Tab(
+                  child: _SaleTabChip(
+                    icon: Icons.card_giftcard_outlined,
+                    label: 'Given',
                   ),
                 ),
                 Tab(

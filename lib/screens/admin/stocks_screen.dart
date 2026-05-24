@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../api/product_list_api.dart';
+import '../../api/stocks_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 
-/// Stocks page: list of purchases (name, limit, available, status).
+/// Stocks page: stock buckets with limits (mirrors web admin Stocks).
 class StocksScreen extends StatefulWidget {
   const StocksScreen({super.key, this.pageTitle = 'Stocks'});
 
@@ -14,7 +14,7 @@ class StocksScreen extends StatefulWidget {
 }
 
 class _StocksScreenState extends State<StocksScreen> {
-  List<Map<String, dynamic>> _purchases = [];
+  List<Map<String, dynamic>> _stocks = [];
   bool _loading = true;
   String? _error;
 
@@ -30,10 +30,10 @@ class _StocksScreenState extends State<StocksScreen> {
       _error = null;
     });
     try {
-      final list = await getPurchases();
+      final list = await getStocks();
       if (!mounted) return;
       setState(() {
-        _purchases = list;
+        _stocks = list;
         _loading = false;
       });
     } catch (e) {
@@ -52,19 +52,8 @@ class _StocksScreenState extends State<StocksScreen> {
     return int.tryParse(v.toString());
   }
 
-  void _openPurchase(int id, String name) {
-    Navigator.pushNamed(
-      context,
-      '/admin/stocks/purchase',
-      arguments: {'id': id, 'name': name},
-    );
-  }
-
-  Color _statusColor(String status) {
-    final s = status.toLowerCase();
-    if (s == 'paid' || s == 'active' || s == 'available') return Colors.green;
-    if (s == 'partial' || s == 'low' || s == 'warning') return Colors.orange;
-    return Colors.red;
+  Color _statusColor(bool underLimit) {
+    return underLimit ? Colors.orange : Colors.green;
   }
 
   @override
@@ -106,7 +95,7 @@ class _StocksScreenState extends State<StocksScreen> {
                         ),
                       ),
                     )
-                  : _purchases.isEmpty
+                  : _stocks.isEmpty
                       ? SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           child: SizedBox(
@@ -122,15 +111,8 @@ class _StocksScreenState extends State<StocksScreen> {
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
-                                    'No purchases yet',
+                                    'No stocks yet',
                                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Add a purchase to get started',
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                                         ),
                                   ),
@@ -140,81 +122,68 @@ class _StocksScreenState extends State<StocksScreen> {
                           ),
                         )
                       : ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: _purchases.length,
-                              itemBuilder: (context, index) {
-                                final p = _purchases[index];
-                                final name = p['name'] as String? ?? 'Purchase #${p['id']}';
-                                final qty = _parseInt(p['limit'] ?? p['quantity']) ?? 0;
-                                final status = p['available_status']?.toString() ?? p['status']?.toString() ?? 'unknown';
-                                final id = _parseInt(p['id']);
-                                final statusColor = _statusColor(status);
-                                return Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(14),
-                                    onTap: id == null ? null : () => _openPurchase(id, name),
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: sectionCardDecoration(context),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 10,
-                                            height: 46,
-                                            decoration: BoxDecoration(
-                                              color: statusColor,
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  name,
-                                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  'Qty: $qty',
-                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                      ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: statusColor.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              status.toUpperCase(),
-                                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                    color: statusColor,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Icon(
-                                            Icons.chevron_right_rounded,
-                                            size: 20,
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ],
-                                      ),
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _stocks.length,
+                          itemBuilder: (context, index) {
+                            final s = _stocks[index];
+                            final name = s['name'] as String? ?? 'Stock #${s['id']}';
+                            final limit = _parseInt(s['stock_limit']) ?? 0;
+                            final qty = _parseInt(s['quantity']) ?? 0;
+                            final underLimit = s['under_limit'] == true;
+                            final statusColor = _statusColor(underLimit);
+                            final statusLabel = underLimit ? 'UNDER LIMIT' : 'OK';
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: sectionCardDecoration(context),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 10,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: statusColor,
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
                                   ),
-                                );
-                              },
-                            ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Qty: $qty / limit $limit',
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      statusLabel,
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                            color: statusColor,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
             ),
     );
   }

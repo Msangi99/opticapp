@@ -30,3 +30,24 @@ Future<Map<String, dynamic>> getOrder(int orderId) async {
   }
   return Map<String, dynamic>.from(payload);
 }
+
+Future<Map<String, dynamic>> updateOrder({
+  required int orderId,
+  required String status,
+  int? paymentOptionId,
+}) async {
+  final body = <String, dynamic>{'status': status};
+  if (paymentOptionId != null) {
+    body['payment_option_id'] = paymentOptionId;
+  }
+  final res = await apiPut('/admin/orders/$orderId', body);
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to update order');
+  }
+  final payload = data?['data'];
+  if (payload is! Map) {
+    throw Exception('Invalid order response');
+  }
+  return Map<String, dynamic>.from(payload);
+}
