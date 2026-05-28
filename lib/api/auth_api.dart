@@ -9,6 +9,7 @@ Future<Map<String, dynamic>> login(String email, String password) async {
     throw Exception(msg.toString());
   }
   final token = data['token'] as String;
+  // Includes tenant_id and brand_name when the user belongs to a vendor tenant.
   final user = data['user'] as Map<String, dynamic>;
   await setStoredToken(token);
   await setStoredUser(user);

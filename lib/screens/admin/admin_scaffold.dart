@@ -182,11 +182,6 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                       _NavItem(icon: Icons.people_rounded, label: 'Customers', route: '/admin/customers'),
                       _NavItem(icon: Icons.store_rounded, label: 'Dealers', route: '/admin/dealers'),
                       _NavItem(icon: Icons.person_search_rounded, label: 'Agents', route: '/admin/agents'),
-                      _NavItem(
-                        icon: Icons.assignment_ind_rounded,
-                        label: 'Assign devices to agent',
-                        route: '/admin/agents/assign-products',
-                      ),
                     ],
                     onNavigate: navigate,
                   ),

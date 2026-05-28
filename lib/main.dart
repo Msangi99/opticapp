@@ -15,7 +15,6 @@ import 'screens/admin/orders_screen.dart';
 import 'screens/admin/customers_screen.dart';
 import 'screens/admin/dealers_screen.dart';
 import 'screens/admin/agents_screen.dart';
-import 'screens/admin/admin_assign_agent_products_screen.dart';
 import 'screens/admin/categories_screen.dart';
 import 'screens/admin/distribution_screen.dart';
 import 'screens/admin/distribution_info_screen.dart';
@@ -76,7 +75,6 @@ class OpticApp extends StatelessWidget {
         '/admin/customers': (context) => const CustomersScreen(),
         '/admin/dealers': (context) => const DealersScreen(),
         '/admin/agents': (context) => const AgentsScreen(),
-        '/admin/agents/assign-products': (context) => const AdminAssignAgentProductsScreen(),
         '/admin/stock/distribution': (context) => const DistributionScreen(),
         '/admin/stock/distribution/info': (context) => const DistributionInfoScreen(),
         '/admin/stock/pending-sales': (context) => const PendingSalesScreen(),
