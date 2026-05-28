@@ -76,6 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacementNamed(context, '/regional-manager/dashboard');
       } else if (role == 'teamleader') {
         Navigator.pushReplacementNamed(context, '/team-leader/dashboard');
+      } else if (role == 'customer' || role == 'dealer') {
+        Navigator.pushReplacementNamed(context, '/shop');
       } else {
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -473,10 +475,31 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 20),
           _primaryButton(
             label: 'Create Account',
-            onPressed: () {
-              if (!_signUpFormKey.currentState!.validate()) return;
-              _snack('Account creation is not available in the app yet. Use Sign in if you have access.');
-            },
+            onPressed: _loading
+                ? null
+                : () async {
+                    if (!_signUpFormKey.currentState!.validate()) return;
+                    setState(() {
+                      _loading = true;
+                      _error = null;
+                    });
+                    try {
+                      await registerCustomer(
+                        name: _signUpNameController.text.trim(),
+                        email: _signUpEmailController.text.trim(),
+                        password: _signUpPasswordController.text,
+                        passwordConfirmation: _signUpPasswordController.text,
+                      );
+                      if (!mounted) return;
+                      Navigator.pushReplacementNamed(context, '/shop');
+                    } catch (e) {
+                      if (!mounted) return;
+                      setState(() {
+                        _error = e.toString().replaceFirst('Exception: ', '');
+                        _loading = false;
+                      });
+                    }
+                  },
           ),
           const SizedBox(height: 24),
           Row(
@@ -496,35 +519,142 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _agentOrDealerSignUpPlaceholder() {
     final isAgent = _view == _AuthView.signUpAgent;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          isAgent ? 'Agent sign up' : 'Dealer sign up',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: _authTitle,
+    return Form(
+      key: isAgent ? _agentFormKey : _dealerFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            isAgent ? 'Agent sign up' : 'Dealer sign up',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: _authTitle,
+                ),
+          ),
+          const SizedBox(height: 16),
+          if (isAgent) ...[
+            TextFormField(
+              controller: _agentNameController,
+              decoration: _fieldDecoration(hint: 'Full name', prefixIcon: const Icon(Icons.badge_outlined, size: 22, color: _authMuted)),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _agentEmailController,
+              decoration: _fieldDecoration(hint: 'Email', prefixIcon: const Icon(Icons.email_outlined, size: 22, color: _authMuted)),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _agentPhoneController,
+              decoration: _fieldDecoration(hint: 'Phone (optional)', prefixIcon: const Icon(Icons.phone_outlined, size: 22, color: _authMuted)),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _agentPasswordController,
+              obscureText: _obscureAgentPassword,
+              decoration: _fieldDecoration(
+                hint: 'Password',
+                prefixIcon: const Icon(Icons.lock_outline, size: 22, color: _authMuted),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscureAgentPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: _authMuted),
+                  onPressed: () => setState(() => _obscureAgentPassword = !_obscureAgentPassword),
+                ),
               ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Registration through the app is not available yet. If your administrator created an account for you, use Sign in.',
-          style: TextStyle(color: _authMuted, fontSize: 14, height: 1.35),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _linkButton(
-              text: 'Back to sign in',
-              onTap: () => setState(() {
-                _view = _AuthView.signIn;
-                _error = null;
-              }),
+              validator: (v) => v == null || v.length < 8 ? 'Min 8 characters' : null,
+            ),
+          ] else ...[
+            TextFormField(
+              controller: _dealerBusinessController,
+              decoration: _fieldDecoration(hint: 'Business name', prefixIcon: const Icon(Icons.store_outlined, size: 22, color: _authMuted)),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _dealerContactController,
+              decoration: _fieldDecoration(hint: 'Contact name', prefixIcon: const Icon(Icons.badge_outlined, size: 22, color: _authMuted)),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _dealerEmailController,
+              decoration: _fieldDecoration(hint: 'Email', prefixIcon: const Icon(Icons.email_outlined, size: 22, color: _authMuted)),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _dealerPasswordController,
+              obscureText: _obscureDealerPassword,
+              decoration: _fieldDecoration(
+                hint: 'Password',
+                prefixIcon: const Icon(Icons.lock_outline, size: 22, color: _authMuted),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscureDealerPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: _authMuted),
+                  onPressed: () => setState(() => _obscureDealerPassword = !_obscureDealerPassword),
+                ),
+              ),
+              validator: (v) => v == null || v.length < 8 ? 'Min 8 characters' : null,
             ),
           ],
-        ),
-      ],
+          const SizedBox(height: 20),
+          _primaryButton(
+            label: 'Submit',
+            onPressed: _loading
+                ? null
+                : () async {
+                    final form = isAgent ? _agentFormKey : _dealerFormKey;
+                    if (!form.currentState!.validate()) return;
+                    setState(() {
+                      _loading = true;
+                      _error = null;
+                    });
+                    try {
+                      final msg = isAgent
+                          ? await registerAgent(
+                              name: _agentNameController.text.trim(),
+                              email: _agentEmailController.text.trim(),
+                              password: _agentPasswordController.text,
+                              passwordConfirmation: _agentPasswordController.text,
+                              phone: _agentPhoneController.text.trim(),
+                            )
+                          : await registerDealer(
+                              name: _dealerContactController.text.trim(),
+                              email: _dealerEmailController.text.trim(),
+                              password: _dealerPasswordController.text,
+                              passwordConfirmation: _dealerPasswordController.text,
+                              businessName: _dealerBusinessController.text.trim(),
+                              phone: _dealerPhoneController.text.trim(),
+                            );
+                      if (!mounted) return;
+                      _snack(msg);
+                      setState(() {
+                        _view = _AuthView.signIn;
+                        _loading = false;
+                      });
+                    } catch (e) {
+                      if (!mounted) return;
+                      setState(() {
+                        _error = e.toString().replaceFirst('Exception: ', '');
+                        _loading = false;
+                      });
+                    }
+                  },
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _linkButton(
+                text: 'Back to sign in',
+                onTap: () => setState(() {
+                  _view = _AuthView.signIn;
+                  _error = null;
+                }),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -559,11 +689,24 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 20),
           _primaryButton(
-            label: 'Send OTP',
-            onPressed: () {
-              if (!_forgotFormKey.currentState!.validate()) return;
-              _snack('Password reset from the app is not available yet. Contact your administrator.');
-            },
+            label: 'Send reset link',
+            onPressed: _loading
+                ? null
+                : () async {
+                    if (!_forgotFormKey.currentState!.validate()) return;
+                    setState(() => _loading = true);
+                    try {
+                      final msg = await forgotPassword(_forgotEmailController.text.trim());
+                      if (!mounted) return;
+                      _snack(msg);
+                      setState(() => _view = _AuthView.signIn);
+                    } catch (e) {
+                      if (!mounted) return;
+                      _snack(e.toString().replaceFirst('Exception: ', ''));
+                    } finally {
+                      if (mounted) setState(() => _loading = false);
+                    }
+                  },
           ),
           const SizedBox(height: 24),
           Row(

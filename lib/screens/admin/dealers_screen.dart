@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../api/users_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'admin_user_detail_screen.dart';
 
 class DealersScreen extends StatefulWidget {
   const DealersScreen({super.key});
@@ -56,7 +57,17 @@ class _DealersScreenState extends State<DealersScreen> {
           final email = u['email'] as String? ?? '–';
           final business = u['business_name'] as String?;
           final status = u['status'] as String? ?? 'pending';
-          return Container(
+          final id = (u['id'] as num?)?.toInt();
+          return InkWell(
+            onTap: id == null
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AdminUserDetailScreen(userId: id, role: 'dealer'),
+                      ),
+                    ).then((_) => _load()),
+            child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: sectionCardDecoration(context),
@@ -68,6 +79,7 @@ class _DealersScreenState extends State<DealersScreen> {
                 Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: (status == 'active' ? Colors.green : Colors.amber).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)), child: Text((status).toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: status == 'active' ? Colors.green.shade700 : Colors.amber.shade700))),
               ],
             ),
+          ),
           );
         },
       ),

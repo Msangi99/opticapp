@@ -45,6 +45,11 @@ import 'screens/team_leader/team_leader_dashboard_screen.dart';
 import 'screens/team_leader/team_leader_imei_register_screen.dart';
 import 'screens/team_leader/team_leader_profile_screen.dart';
 import 'screens/team_leader/team_leader_return_devices_screen.dart';
+import 'screens/admin/admin_more_screens.dart';
+import 'screens/admin/subadmins_screen.dart';
+import 'screens/admin/regional_managers_screen.dart';
+import 'screens/admin/team_leaders_screen.dart';
+import 'screens/admin/vendors_screen.dart';
 
 void main() {
   runApp(const OpticApp());
@@ -74,6 +79,7 @@ class OpticApp extends StatelessWidget {
         '/admin/orders': (context) => const OrdersScreen(),
         '/admin/customers': (context) => const CustomersScreen(),
         '/admin/dealers': (context) => const DealersScreen(),
+        '/admin/vendors': (context) => const VendorsScreen(),
         '/admin/agents': (context) => const AgentsScreen(),
         '/admin/stock/distribution': (context) => const DistributionScreen(),
         '/admin/stock/distribution/info': (context) => const DistributionInfoScreen(),
@@ -82,6 +88,22 @@ class OpticApp extends StatelessWidget {
         '/admin/stock/branch-transfer': (context) => const AdminBranchTransferScreen(),
         '/admin/reports': (context) => const ReportsScreen(),
         '/admin/settings': (context) => const SettingsScreen(),
+        '/admin/models': (context) => const ModelsScreen(),
+        '/admin/imei-search': (context) => const ImeiSearchScreen(),
+        '/admin/branches': (context) => const BranchesScreen(),
+        '/admin/passthrough': (context) => const PassthroughSalesScreen(),
+        '/admin/agent-credits': (context) => const AdminAgentCreditsScreen(),
+        '/admin/leads': (context) => const LeadsReportScreen(),
+        '/admin/vendor-profile': (context) => const VendorProfileScreen(),
+        '/admin/organization': (context) => const OrganizationTreeScreen(),
+        '/admin/payables': (context) => const PayablesScreen(),
+        '/admin/shop-records': (context) => const ShopRecordsScreen(),
+        '/admin/payout': (context) => const PayoutScreen(),
+        '/admin/profile': (context) => const AdminProfileScreen(),
+        '/admin/subadmins': (context) => const SubadminsScreen(),
+        '/admin/regional-managers': (context) => const RegionalManagersScreen(),
+        '/admin/team-leaders': (context) => const TeamLeadersScreen(),
+        '/shop': (context) => const WebShopScreen(),
         '/agent/dashboard': (context) => const AgentDashboardScreen(),
         '/agent/sell': (context) => const SellScreen(),
         '/agent/credits': (context) => const AgentCreditsScreen(),
@@ -134,6 +156,10 @@ class _AuthCheckerState extends State<_AuthChecker> {
       final role = user['role'] as String?;
       if (role == 'admin' || role == 'subadmin') {
         Navigator.pushReplacementNamed(context, '/admin/dashboard');
+        return;
+      }
+      if (role == 'customer' || role == 'dealer') {
+        Navigator.pushReplacementNamed(context, '/shop');
         return;
       }
       if (role == 'agent') {

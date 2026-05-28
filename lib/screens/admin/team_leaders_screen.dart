@@ -1,0 +1,74 @@
+import 'package:flutter/material.dart';
+import '../../api/users_api.dart';
+import '../../theme/app_theme.dart';
+import 'admin_scaffold.dart';
+import 'admin_user_detail_screen.dart';
+
+class TeamLeadersScreen extends StatefulWidget {
+  const TeamLeadersScreen({super.key});
+
+  @override
+  State<TeamLeadersScreen> createState() => _TeamLeadersScreenState();
+}
+
+class _TeamLeadersScreenState extends State<TeamLeadersScreen> {
+  List<Map<String, dynamic>> _list = [];
+  bool _loading = true;
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final list = await getTeamLeaders();
+      if (!mounted) return;
+      setState(() {
+        _list = list;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AdminScaffold(
+      title: 'Team leaders',
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _list.length,
+                itemBuilder: (_, i) {
+                  final u = _list[i];
+                  final id = (u['id'] as num?)?.toInt();
+                  return InkWell(
+                    onTap: id == null
+                        ? null
+                        : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AdminUserDetailScreen(userId: id, role: 'teamleader'),
+                              ),
+                            ),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: sectionCardDecoration(context),
+                      child: Text('${u['name']} · ${u['email']}'),
+                    ),
+                  );
+                },
+              ),
+            ),
+    );
+  }
+}

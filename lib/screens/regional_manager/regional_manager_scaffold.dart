@@ -174,6 +174,11 @@ class _RegionalManagerDrawer extends StatelessWidget {
                     primary: primary,
                     items: const [
                       _NavItem(
+                        icon: Icons.storefront_rounded,
+                        label: 'Browse shop',
+                        route: '/shop',
+                      ),
+                      _NavItem(
                         icon: Icons.person_outline_rounded,
                         label: 'Profile',
                         route: '/regional-manager/profile',

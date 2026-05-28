@@ -1,0 +1,210 @@
+import 'dart:convert';
+import 'client.dart';
+
+Map<String, dynamic> _jsonMap(dynamic res) {
+  // res is http.Response from client.dart
+  final data = jsonDecode(res.body);
+  if (data is Map<String, dynamic>) return data;
+  return {};
+}
+
+Future<List<Map<String, dynamic>>> _list(String path) async {
+  final res = await apiGet(path);
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Request failed');
+  }
+  final list = data['data'];
+  if (list is! List) return [];
+  return list.cast<Map<String, dynamic>>();
+}
+
+// IMEI
+Future<List<Map<String, dynamic>>> searchImei(String q) async {
+  final res = await apiGet('/admin/imei-search?q=${Uri.encodeQueryComponent(q)}');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Search failed');
+  return (data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+}
+
+Future<Map<String, dynamic>> getImeiItem(int id) async {
+  final res = await apiGet('/admin/imei-items/$id');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Not found');
+  return data['data'] as Map<String, dynamic>;
+}
+
+// Passthrough
+Future<List<Map<String, dynamic>>> getPassthroughSales() => _list('/admin/passthrough-sales');
+
+// Agent credits (admin)
+Future<Map<String, dynamic>> getAdminAgentCredits({String? period}) async {
+  final res = await apiGet('/admin/agent-credits');
+  return _jsonMap(res);
+}
+
+Future<Map<String, dynamic>> getAdminAgentCredit(int id) async {
+  final res = await apiGet('/admin/agent-credits/$id');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Not found');
+  return data['data'] as Map<String, dynamic>;
+}
+
+Future<void> payAdminAgentCredit({
+  required int agentCreditId,
+  required String paidDate,
+  required double amount,
+  int? paymentOptionId,
+}) async {
+  final res = await apiPost('/admin/agent-credits/pay', {
+    'agent_credit_id': agentCreditId,
+    'paid_date': paidDate,
+    'amount': amount,
+    if (paymentOptionId != null) 'payment_option_id': paymentOptionId,
+  });
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Payment failed');
+}
+
+// Leads report
+Future<Map<String, dynamic>> getLeadsReport({String period = 'week'}) async {
+  final res = await apiGet('/admin/customer-needs?period=$period');
+  return _jsonMap(res);
+}
+
+// Tenant
+Future<Map<String, dynamic>> getTenantProfile() async {
+  final res = await apiGet('/admin/tenant');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Failed');
+  return data['data'] as Map<String, dynamic>;
+}
+
+Future<void> updateTenantProfile({
+  required String name,
+  required String slug,
+  String? brandName,
+}) async {
+  final res = await apiPut('/admin/tenant', {
+    'name': name,
+    'slug': slug,
+    'brand_name': brandName,
+  });
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
+}
+
+// Organization
+Future<Map<String, dynamic>> getOrganizationTree() async {
+  final res = await apiGet('/admin/organization-tree');
+  return _jsonMap(res);
+}
+
+Future<List<Map<String, dynamic>>> getPayables() => _list('/admin/payables');
+Future<List<Map<String, dynamic>>> getShopRecords() => _list('/admin/shop-records');
+Future<List<Map<String, dynamic>>> getPayoutRows() => _list('/admin/payout');
+
+// Products
+Future<List<Map<String, dynamic>>> getProducts({int? categoryId}) async {
+  final q = categoryId != null ? '?category_id=$categoryId' : '';
+  return _list('/admin/products$q');
+}
+
+Future<void> createProduct({
+  required int categoryId,
+  required String name,
+  String? description,
+}) async {
+  final res = await apiPost('/admin/products', {
+    'category_id': categoryId,
+    'name': name,
+    if (description != null) 'description': description,
+  });
+  final data = _jsonMap(res);
+  if (res.statusCode != 201 && res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Create failed');
+  }
+}
+
+Future<void> deleteProduct(int id) async {
+  final res = await apiDelete('/admin/products/$id');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Delete failed');
+}
+
+Future<List<Map<String, dynamic>>> getProductImeiList(int productId) async {
+  final res = await apiGet('/admin/products/$productId/imei');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Failed');
+  return (data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+}
+
+// Branches CRUD
+Future<void> createBranch(String name) async {
+  final res = await apiPost('/admin/branches', {'name': name});
+  final data = _jsonMap(res);
+  if (res.statusCode != 201 && res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Create failed');
+  }
+}
+
+Future<void> updateBranch(int id, String name) async {
+  final res = await apiPut('/admin/branches/$id', {'name': name});
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
+}
+
+Future<void> deleteBranch(int id) async {
+  final res = await apiDelete('/admin/branches/$id');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Delete failed');
+}
+
+// Categories CRUD
+Future<void> createCategory(String name) async {
+  final res = await apiPost('/admin/categories', {'name': name});
+  final data = _jsonMap(res);
+  if (res.statusCode != 201 && res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Create failed');
+  }
+}
+
+Future<void> updateCategory(int id, String name) async {
+  final res = await apiPut('/admin/categories/$id', {'name': name});
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
+}
+
+Future<void> deleteCategory(int id) async {
+  final res = await apiDelete('/admin/categories/$id');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Delete failed');
+}
+
+// Admin profile
+Future<Map<String, dynamic>> getAdminProfile() async {
+  final res = await apiGet('/admin/profile');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Failed');
+  return data['data'] as Map<String, dynamic>;
+}
+
+Future<void> updateAdminProfile({required String name, required String email}) async {
+  final res = await apiPut('/admin/profile', {'name': name, 'email': email});
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
+}
+
+Future<void> updateAdminPassword({
+  required String currentPassword,
+  required String password,
+  required String passwordConfirmation,
+}) async {
+  final res = await apiPut('/admin/profile/password', {
+    'current_password': currentPassword,
+    'password': password,
+    'password_confirmation': passwordConfirmation,
+  });
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
+}
