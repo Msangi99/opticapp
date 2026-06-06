@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../api/vendors_api.dart';
 import 'admin_scaffold.dart';
 import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_users_ui.dart';
 
 class VendorsScreen extends StatefulWidget {
   const VendorsScreen({super.key});
@@ -189,7 +190,17 @@ class _VendorsScreenState extends State<VendorsScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Add vendor'),
       ),
-      body: _loading
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AdminUsersPageHeader(
+            eyebrow: 'Partners',
+            title: 'Vendors',
+            subtitle: 'Manage distributors used on purchase forms.',
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _loading
           ? const AdminPageLoading()
           : RefreshIndicator(
               onRefresh: _load,
@@ -256,6 +267,9 @@ class _VendorsScreenState extends State<VendorsScreen> {
                           },
                         ),
             ),
+          ),
+        ],
+      ),
     );
   }
 

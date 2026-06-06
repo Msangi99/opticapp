@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../api/distribution_sales_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_stock_ui.dart';
+import 'widgets/admin_users_ui.dart';
 
 class DistributionScreen extends StatefulWidget {
   const DistributionScreen({super.key});
@@ -34,8 +36,6 @@ class _DistributionScreenState extends State<DistributionScreen> {
     }
   }
 
-  String _formatCurrency(double v) => '${NumberFormat('#,##0').format(v)} TZS';
-
   int? _asInt(dynamic value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
@@ -48,82 +48,105 @@ class _DistributionScreenState extends State<DistributionScreen> {
     Navigator.pushNamed(
       context,
       '/admin/stock/distribution/info',
-      arguments: {
-        ...sale,
-        'id': id,
-      },
+      arguments: {...sale, 'id': id},
     );
+  }
+
+  List<AdminStockStat> _summaryStats() {
+    double totalSell = 0;
+    double totalProfit = 0;
+    var pending = 0;
+    for (final s in _list) {
+      totalSell += (s['total_selling_value'] as num?)?.toDouble() ?? 0;
+      totalProfit += (s['profit'] as num?)?.toDouble() ?? 0;
+      if ((s['status'] as String? ?? '').toLowerCase() == 'pending') pending++;
+    }
+    return [
+      AdminStockStat(label: 'Records', value: formatCount(_list.length)),
+      AdminStockStat(label: 'Total sales', value: formatTzs(totalSell)),
+      AdminStockStat(label: 'Total profit', value: formatTzs(totalProfit), highlight: true, highlightColor: const Color(0xFF059669)),
+      AdminStockStat(label: 'Pending', value: formatCount(pending), highlight: true, highlightColor: const Color(0xFFD97706)),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
     return AdminScaffold(
-      title: 'Distribution',
-      body: _loading
-          ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Loading…', style: TextStyle(color: Color(0xFF6B7280)))]))
-          : _error != null
-              ? SingleChildScrollView(physics: const AlwaysScrollableScrollPhysics(), child: Padding(padding: const EdgeInsets.all(20), child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)), child: Text(_error!, style: errorStyle()))))
-              : _list.isEmpty
-                  ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.local_shipping_outlined, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)), const SizedBox(height: 16), Text('No distribution sales yet', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))]))
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _list.length,
-                        itemBuilder: (context, index) {
-                          final s = _list[index];
-                          final dealerName = s['dealer_name'] as String? ?? '–';
-                          final productName = s['product_name'] as String? ?? '–';
-                          final total = (s['total_selling_value'] as num?)?.toDouble() ?? 0.0;
-                          final profit = (s['profit'] as num?)?.toDouble() ?? 0.0;
-                          final status = s['status'] as String? ?? 'pending';
-                          return Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: () => _openDistribution(s),
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(16),
-                                decoration: sectionCardDecoration(context),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.teal.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(Icons.store_rounded, color: Colors.teal.shade700, size: 20)),
-                                        const SizedBox(width: 12),
-                                        Expanded(child: Text(dealerName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
-                                        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)), child: Text((status).toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.orange.shade700))),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(productName, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(_formatCurrency(total), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-                                        Text('Profit: ${_formatCurrency(profit)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.green.shade700, fontWeight: FontWeight.w600)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Icon(
-                                        Icons.chevron_right_rounded,
-                                        size: 20,
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+      title: 'Distribution sales',
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final ok = await Navigator.pushNamed(context, '/admin/stock/distribution/form');
+          if (ok == true) _load();
+        },
+        child: const Icon(Icons.add),
+      ),
+      body: AdminStockPageShell(
+        eyebrow: 'Dealers',
+        title: 'Distribution sales',
+        subtitle: 'Sales to dealers (buy from purchases, sell from orders).',
+        summaryLabel: _list.isEmpty ? null : 'Summary (current filter)',
+        summaryStats: _list.isEmpty ? null : _summaryStats(),
+        summaryColumns: 2,
+        body: _buildBody(context),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (_loading) return const AdminPageLoading();
+    if (_error != null) return AdminPageError(message: _error!);
+    if (_list.isEmpty) {
+      return const AdminPageEmpty(icon: Icons.local_shipping_outlined, title: 'No distribution sales yet');
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        itemCount: _list.length,
+        itemBuilder: (context, index) {
+          final s = _list[index];
+          final dealerName = s['dealer_name'] as String? ?? '–';
+          final productName = s['product_name'] as String? ?? '–';
+          final total = (s['total_selling_value'] as num?)?.toDouble() ?? 0.0;
+          final profit = (s['profit'] as num?)?.toDouble() ?? 0.0;
+          final status = s['status'] as String? ?? 'pending';
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _openDistribution(s),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: sectionCardDecoration(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(dealerName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(status.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.orange.shade700)),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 6),
+                    Text(productName, style: TextStyle(color: kAdminTextMuted, fontSize: 13)),
+                    Text('${formatTzs(total)} · profit ${formatTzs(profit)}', style: TextStyle(color: kAdminTextMuted, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

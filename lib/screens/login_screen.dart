@@ -70,6 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final role = user?['role'] as String?;
       if (role == 'admin' || role == 'subadmin') {
         Navigator.pushReplacementNamed(context, '/admin/dashboard');
+      } else if (role == 'superadmin') {
+        Navigator.pushReplacementNamed(context, '/superadmin/dashboard');
       } else if (role == 'agent') {
         Navigator.pushReplacementNamed(context, '/agent/dashboard');
       } else if (role == 'regional_manager') {
@@ -77,7 +79,12 @@ class _LoginScreenState extends State<LoginScreen> {
       } else if (role == 'teamleader') {
         Navigator.pushReplacementNamed(context, '/team-leader/dashboard');
       } else if (role == 'customer' || role == 'dealer') {
-        Navigator.pushReplacementNamed(context, '/shop');
+        final status = user?['status'] as String? ?? 'active';
+        if (role == 'dealer' && status != 'active') {
+          Navigator.pushReplacementNamed(context, '/shop/dealer-pending');
+        } else {
+          Navigator.pushReplacementNamed(context, '/shop/dashboard');
+        }
       } else {
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -491,7 +498,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         passwordConfirmation: _signUpPasswordController.text,
                       );
                       if (!mounted) return;
-                      Navigator.pushReplacementNamed(context, '/shop');
+                      Navigator.pushReplacementNamed(context, '/shop/dashboard');
                     } catch (e) {
                       if (!mounted) return;
                       setState(() {
@@ -626,11 +633,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               phone: _dealerPhoneController.text.trim(),
                             );
                       if (!mounted) return;
-                      _snack(msg);
-                      setState(() {
-                        _view = _AuthView.signIn;
-                        _loading = false;
-                      });
+                      if (isAgent) {
+                        _snack(msg);
+                        setState(() {
+                          _view = _AuthView.signIn;
+                          _loading = false;
+                        });
+                      } else {
+                        Navigator.pushReplacementNamed(context, '/shop/dealer-pending');
+                      }
                     } catch (e) {
                       if (!mounted) return;
                       setState(() {

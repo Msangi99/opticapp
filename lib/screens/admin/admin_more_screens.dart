@@ -3,10 +3,13 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/admin_modules_api.dart';
+import '../../api/invoice_api.dart';
 import '../../api/branches_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_users_ui.dart';
+import 'widgets/admin_stock_ui.dart';
 
 /// Generic admin list screen used for payables, shop records, payout, passthrough.
 class AdminDataListScreen extends StatefulWidget {
@@ -16,12 +19,18 @@ class AdminDataListScreen extends StatefulWidget {
     required this.loader,
     required this.itemBuilder,
     this.fab,
+    this.eyebrow,
+    this.shellTitle,
+    this.subtitle,
   });
 
   final String title;
   final Future<List<Map<String, dynamic>>> Function() loader;
   final Widget Function(Map<String, dynamic> item) itemBuilder;
   final Widget? fab;
+  final String? eyebrow;
+  final String? shellTitle;
+  final String? subtitle;
 
   @override
   State<AdminDataListScreen> createState() => _AdminDataListScreenState();
@@ -61,23 +70,34 @@ class _AdminDataListScreenState extends State<AdminDataListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final listBody = _loading
+        ? const AdminPageLoading()
+        : RefreshIndicator(
+            onRefresh: _load,
+            child: _error != null
+                ? AdminPageError(message: _error!)
+                : _list.isEmpty
+                    ? AdminPageEmpty(icon: Icons.inbox_outlined, title: 'No records')
+                    : ListView.builder(
+                        padding: EdgeInsets.fromLTRB(16, widget.eyebrow == null ? 16 : 0, 16, 16),
+                        itemCount: _list.length,
+                        itemBuilder: (_, i) => widget.itemBuilder(_list[i]),
+                      ),
+          );
+
+    final body = widget.eyebrow != null
+        ? AdminStockPageShell(
+            eyebrow: widget.eyebrow!,
+            title: widget.shellTitle ?? widget.title,
+            subtitle: widget.subtitle,
+            body: listBody,
+          )
+        : listBody;
+
     return AdminScaffold(
       title: widget.title,
       floatingActionButton: widget.fab,
-      body: _loading
-          ? const AdminPageLoading()
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: _error != null
-                  ? AdminPageError(message: _error!)
-                  : _list.isEmpty
-                      ? AdminPageEmpty(icon: Icons.inbox_outlined, title: 'No records')
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _list.length,
-                          itemBuilder: (_, i) => widget.itemBuilder(_list[i]),
-                        ),
-            ),
+      body: body,
     );
   }
 }
@@ -137,8 +157,29 @@ class PayoutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AdminDataListScreen(
+    return AdminScaffold(
       title: 'Pay out',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.payments_outlined),
+          tooltip: 'Bulk Selcom payout',
+          onPressed: () async {
+            try {
+              await bulkSelcomPayout();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bulk Selcom payout initiated.')));
+            } catch (e) {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+            }
+          },
+        ),
+      ],
+      body: AdminDataListScreen(
+      title: 'Pay out',
+      eyebrow: 'Operations',
+      shellTitle: 'Pay out',
+      subtitle: 'Agent commission payouts awaiting processing.',
       loader: getPayoutRows,
       itemBuilder: (r) => Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -163,30 +204,138 @@ class PayoutScreen extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }
 
-class PassthroughSalesScreen extends StatelessWidget {
+class PassthroughSalesScreen extends StatefulWidget {
   const PassthroughSalesScreen({super.key});
 
   @override
+  State<PassthroughSalesScreen> createState() => _PassthroughSalesScreenState();
+}
+
+class _PassthroughSalesScreenState extends State<PassthroughSalesScreen> {
+  List<Map<String, dynamic>> _list = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final list = await getPassthroughSales();
+      if (!mounted) return;
+      setState(() {
+        _list = list;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  List<AdminStockStat> _summaryStats() {
+    var paid = 0;
+    var partial = 0;
+    var unpaid = 0;
+    for (final p in _list) {
+      final st = (p['payment_status']?.toString() ?? '').toLowerCase();
+      if (st == 'paid') {
+        paid++;
+      } else if (st == 'partial') {
+        partial++;
+      } else {
+        unpaid++;
+      }
+    }
+    return [
+      AdminStockStat(label: 'Entries', value: formatCount(_list.length)),
+      AdminStockStat(label: 'Paid', value: formatCount(paid), highlight: true, highlightColor: const Color(0xFF059669)),
+      AdminStockStat(label: 'Partial', value: formatCount(partial)),
+      AdminStockStat(label: 'Unpaid', value: formatCount(unpaid), highlight: true, highlightColor: const Color(0xFFDC2626)),
+    ];
+  }
+
+  Future<void> _openForm({int? id}) async {
+    final ok = await Navigator.pushNamed(
+      context,
+      '/admin/passthrough/form',
+      arguments: id != null ? {'id': id} : null,
+    );
+    if (ok == true) _load();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AdminDataListScreen(
+    return AdminScaffold(
       title: 'Passthrough sales',
-      loader: getPassthroughSales,
-      itemBuilder: (p) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        child: AdminSectionCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(p['name']?.toString() ?? 'Purchase', style: const TextStyle(fontWeight: FontWeight.w600)),
-            Text('${p['date'] ?? ''} · ${p['product_name'] ?? ''} · ${p['payment_status'] ?? ''}'),
-          ],
-        ),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openForm(),
+        child: const Icon(Icons.add),
+      ),
+      body: AdminStockPageShell(
+        eyebrow: 'Inventory',
+        title: 'Passthrough',
+        subtitle: 'Stock passthrough entries (no IMEI tracking), payments, and sell prices.',
+        summaryLabel: _list.isEmpty ? null : 'Summary',
+        summaryStats: _list.isEmpty ? null : _summaryStats(),
+        summaryColumns: 2,
+        body: _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) return const AdminPageLoading();
+    if (_error != null) return AdminPageError(message: _error!);
+    if (_list.isEmpty) {
+      return const AdminPageEmpty(icon: Icons.swap_horiz_rounded, title: 'No passthrough sales yet');
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        itemCount: _list.length,
+        itemBuilder: (_, i) {
+          final p = _list[i];
+          final pid = p['id'] is int ? p['id'] as int : int.tryParse(p['id']?.toString() ?? '');
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: pid != null ? () => _openForm(id: pid) : null,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: AdminSectionCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(p['name']?.toString() ?? 'Passthrough', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text('${p['date'] ?? ''} · ${p['product_name'] ?? ''}', style: TextStyle(color: kAdminTextMuted, fontSize: 13)),
+                      Text('Status: ${p['payment_status'] ?? ''}', style: TextStyle(color: kAdminTextMuted, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -235,34 +384,59 @@ class _ImeiSearchScreenState extends State<ImeiSearchScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'IMEI search',
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(hintText: 'IMEI / serial', border: OutlineInputBorder()),
-                    onSubmitted: (_) => _search(),
-                  ),
+      body: AdminStockPageShell(
+        eyebrow: 'Stock',
+        title: 'IMEI search',
+        subtitle: 'Enter part or all of an IMEI or serial. Open a row for the full device record.',
+        trailing: TextButton.icon(
+          onPressed: () => Navigator.pushReplacementNamed(context, '/admin/stocks'),
+          icon: const Icon(Icons.arrow_back, size: 18),
+          label: const Text('Back to stocks'),
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AdminSectionCard(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _controller,
+                      decoration: const InputDecoration(
+                        labelText: 'IMEI / serial',
+                        hintText: 'e.g. 352123456789012',
+                        border: OutlineInputBorder(),
+                      ),
+                      onSubmitted: (_) => _search(),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'At least 3 characters. Up to 100 matches.',
+                      style: TextStyle(fontSize: 12, color: kAdminTextMuted),
+                    ),
+                    const SizedBox(height: 10),
+                    FilledButton(
+                      onPressed: _loading ? null : _search,
+                      style: FilledButton.styleFrom(backgroundColor: kAdminBrandDark),
+                      child: const Text('Search'),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                FilledButton(onPressed: _loading ? null : _search, child: const Text('Search')),
-              ],
+              ),
             ),
-          ),
-          if (_loading) const Expanded(child: AdminPageLoading()),
-          if (!_loading && _error != null) Expanded(child: AdminPageError(message: _error!)),
-          if (!_loading && _error == null)
-            Expanded(
-              child: _results.isEmpty
-                  ? const AdminPageEmpty(icon: Icons.qr_code_2, title: 'Search for an IMEI')
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _results.length,
-                      itemBuilder: (_, i) {
+            const SizedBox(height: 8),
+            if (_loading) const Expanded(child: AdminPageLoading()),
+            if (!_loading && _error != null) Expanded(child: AdminPageError(message: _error!)),
+            if (!_loading && _error == null)
+              Expanded(
+                child: _results.isEmpty
+                    ? const AdminPageEmpty(icon: Icons.qr_code_2, title: 'Search for an IMEI')
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        itemCount: _results.length,
+                        itemBuilder: (_, i) {
                         final r = _results[i];
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -302,8 +476,9 @@ class _ImeiSearchScreenState extends State<ImeiSearchScreen> {
                         );
                       },
                     ),
-            ),
-        ],
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -353,54 +528,212 @@ class _LeadsReportScreenState extends State<LeadsReportScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Leads report',
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'week', label: Text('Week')),
-                ButtonSegment(value: 'month', label: Text('Month')),
-                ButtonSegment(value: 'year', label: Text('Year')),
-              ],
-              selected: {_period},
-              onSelectionChanged: (s) {
-                setState(() => _period = s.first);
-                _load();
-              },
+      body: AdminStockPageShell(
+        eyebrow: 'Operations',
+        title: 'Leads report',
+        subtitle: 'Customer needs and product interest captured by agents.',
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'week', label: Text('Week')),
+                  ButtonSegment(value: 'month', label: Text('Month')),
+                  ButtonSegment(value: 'year', label: Text('Year')),
+                ],
+                selected: {_period},
+                onSelectionChanged: (s) {
+                  setState(() => _period = s.first);
+                  _load();
+                },
+              ),
             ),
+            Expanded(
+              child: _loading
+                  ? const AdminPageLoading()
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: _error != null
+                          ? AdminPageError(message: _error!)
+                          : _list.isEmpty
+                              ? const AdminPageEmpty(icon: Icons.leaderboard_outlined, title: 'No leads for this period')
+                              : ListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                  itemCount: _list.length,
+                                  itemBuilder: (_, i) {
+                                    final n = _list[i];
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      child: AdminSectionCard(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(n['customer_name']?.toString() ?? 'Lead', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                            Text('${n['product_name'] ?? ''} · Agent: ${n['agent_name'] ?? ''}'),
+                                            Text('${n['customer_phone'] ?? ''} · ${n['branch_name'] ?? ''}'),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SubscriptionScreen extends StatefulWidget {
+  const SubscriptionScreen({super.key});
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  Map<String, dynamic>? _tenant;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final t = await getTenantProfile();
+      if (!mounted) return;
+      setState(() {
+        _tenant = t;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  Widget _field(String label, String value, {Widget? trailing}) {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kAdminTextMuted),
           ),
-          Expanded(
-            child: _loading
-                ? const AdminPageLoading()
+          const SizedBox(height: 4),
+          trailing ??
+              Text(
+                value,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kAdminBrandDark),
+              ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _tenant?['status']?.toString() ?? '';
+    final isActive = status == 'active';
+
+    return AdminScaffold(
+      title: 'Subscription',
+      body: AdminStockPageShell(
+        eyebrow: 'Account',
+        title: 'Subscription',
+        subtitle: 'View your package and billing status. Contact platform support to change package or status.',
+        body: _loading
+            ? const AdminPageLoading()
+            : _error != null
+                ? AdminPageError(message: _error!)
                 : RefreshIndicator(
                     onRefresh: _load,
-                    child: _error != null
-                        ? AdminPageError(message: _error!)
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _list.length,
-                            itemBuilder: (_, i) {
-                              final n = _list[i];
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                child: AdminSectionCard(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(n['customer_name']?.toString() ?? 'Lead', style: const TextStyle(fontWeight: FontWeight.w600)),
-                                    Text('${n['product_name'] ?? ''} · Agent: ${n['agent_name'] ?? ''}'),
-                                    Text('${n['customer_phone'] ?? ''} · ${n['branch_name'] ?? ''}'),
-                                  ],
-                                ),
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      children: [
+                        AdminSectionCard(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Subscription', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Read-only — contact platform support to change package or status.',
+                                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                               ),
-                              );
-                            },
+                              const SizedBox(height: 20),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final half = (constraints.maxWidth - 16) / 2;
+                                  return Wrap(
+                                    spacing: 16,
+                                    runSpacing: 16,
+                                    children: [
+                                      SizedBox(
+                                        width: half,
+                                        child: _field('Package', _tenant?['package_name']?.toString() ?? '—'),
+                                      ),
+                                      SizedBox(
+                                        width: half,
+                                        child: _field('Billing', _tenant?['billing']?.toString() ?? '—'),
+                                      ),
+                                      SizedBox(
+                                        width: half,
+                                        child: _field(
+                                          'Status',
+                                          '',
+                                          trailing: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: (isActive ? Colors.green : Colors.orange).withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              isActive ? 'Active' : (status.isEmpty ? '—' : status[0].toUpperCase() + status.substring(1)),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: isActive ? Colors.green.shade800 : Colors.orange.shade800,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: half,
+                                        child: _field(
+                                          'Subscription ends',
+                                          _tenant?['subscription_ends_at_formatted']?.toString() ?? '—',
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
                           ),
+                        ),
+                      ],
+                    ),
                   ),
-          ),
-        ],
       ),
     );
   }
@@ -491,7 +824,17 @@ class OrganizationTreeScreen extends StatefulWidget {
 
 class _OrganizationTreeScreenState extends State<OrganizationTreeScreen> {
   Map<String, dynamic>? _data;
+  Map<String, dynamic>? _stats;
   bool _loading = true;
+
+  static const _branchColors = [
+    Color(0xFF1565C0),
+    Color(0xFF2E7D32),
+    Color(0xFFEF6C00),
+    Color(0xFF6A1B9A),
+    Color(0xFF00838F),
+    Color(0xFFAD1457),
+  ];
 
   @override
   void initState() {
@@ -500,11 +843,13 @@ class _OrganizationTreeScreenState extends State<OrganizationTreeScreen> {
   }
 
   Future<void> _load() async {
+    setState(() => _loading = true);
     try {
       final res = await getOrganizationTree();
       if (!mounted) return;
       setState(() {
         _data = res['data'] as Map<String, dynamic>?;
+        _stats = res['stats'] as Map<String, dynamic>?;
         _loading = false;
       });
     } catch (e) {
@@ -514,33 +859,94 @@ class _OrganizationTreeScreenState extends State<OrganizationTreeScreen> {
     }
   }
 
-  Widget _section(String title, List<dynamic>? users) {
-    final list = users?.cast<Map<String, dynamic>>() ?? [];
+  Widget _node(String title, Color bg, {String? subtitle, Color textColor = Colors.white, double fontSize = 13}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: AdminSectionCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: sectionLabelStyle(context)),
-          const SizedBox(height: 8),
-          ...list.map((u) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text('${u['name']} (${u['email']}) · ${u['status']}'),
-              )),
-          if (list.isEmpty) const Text('None', style: TextStyle(color: Colors.grey)),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: fontSize),
+          ),
+          if (subtitle != null)
+            Text(
+              subtitle,
+              style: TextStyle(color: textColor.withValues(alpha: 0.88), fontSize: 10),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _teamColumn(Map<String, dynamic> tl, int colorIndex) {
+    final color = _branchColors[colorIndex % _branchColors.length];
+    final agents = (tl['agents'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    return Column(
+      children: [
+        _node(tl['name']?.toString() ?? '–', color),
+        const SizedBox(height: 8),
+        if (agents.isEmpty)
+          const Text('No agents', style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic))
+        else
+          ...agents.map(
+            (a) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _node(
+                a['name']?.toString() ?? '–',
+                color.withValues(alpha: 0.18),
+                subtitle: a['branch_name']?.toString(),
+                textColor: color.withValues(alpha: 0.95),
+                fontSize: 12,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _managerSection(Map<String, dynamic> rm, int index) {
+    final tls = (rm['team_leaders'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: sectionCardDecoration(context),
+      child: Column(
+        children: [
+          _node(
+            rm['name']?.toString() ?? '–',
+            const Color(0xFFC0392B),
+            subtitle: rm['region_name']?.toString(),
+            fontSize: 15,
+          ),
+          const SizedBox(height: 12),
+          if (tls.isEmpty)
+            const Text('No team leaders assigned', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic))
+          else
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: tls.asMap().entries.map((e) => _teamColumn(e.value, e.key + index)).toList(),
+            ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final stats = _data?['stats'] as Map<String, dynamic>?;
+    final tree = (_data?['tree'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final unassignedTls = (_data?['unassigned_team_leaders'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final unassignedAgents = (_data?['unassigned_agents'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
     return AdminScaffold(
-      title: 'Organization',
+      title: 'Organization tree',
       body: _loading
           ? const AdminPageLoading()
           : RefreshIndicator(
@@ -548,15 +954,96 @@ class _OrganizationTreeScreenState extends State<OrganizationTreeScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  if (stats != null)
-                    Text(
-                      'RM ${stats['regional_managers']} · TL ${stats['team_leaders']} · Agents ${stats['agents']}',
-                      style: Theme.of(context).textTheme.titleMedium,
+                  const AdminUsersPageHeader(
+                    eyebrow: 'Staff',
+                    title: 'Organization tree',
+                    subtitle: 'Visual hierarchy: regional managers → team leaders → agents.',
+                  ),
+                  if (_stats != null) ...[
+                    const SizedBox(height: 12),
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.6,
+                      children: [
+                        AdminStatCard(value: '${_stats!['regional_managers']}', label: 'Regional managers'),
+                        AdminStatCard(value: '${_stats!['team_leaders']}', label: 'Team leaders'),
+                        AdminStatCard(value: '${_stats!['agents']}', label: 'Agents'),
+                        if ((_stats!['unassigned_team_leaders'] as num? ?? 0) > 0)
+                          AdminStatCard(
+                            value: '${_stats!['unassigned_team_leaders']}',
+                            label: 'Unassigned TLs',
+                            highlight: true,
+                          ),
+                        if ((_stats!['unassigned_agents'] as num? ?? 0) > 0)
+                          AdminStatCard(
+                            value: '${_stats!['unassigned_agents']}',
+                            label: 'Unassigned agents',
+                            highlight: true,
+                          ),
+                      ],
                     ),
-                  const SizedBox(height: 12),
-                  _section('Regional managers', _data?['regional_managers'] as List?),
-                  _section('Team leaders', _data?['team_leaders'] as List?),
-                  _section('Agents', _data?['agents'] as List?),
+                  ],
+                  const SizedBox(height: 16),
+                  if (tree.isEmpty && unassignedTls.isEmpty && unassignedAgents.isEmpty)
+                    const AdminPageEmpty(
+                      icon: Icons.account_tree_outlined,
+                      title: 'No organization data yet',
+                    )
+                  else ...[
+                    ...tree.asMap().entries.map((e) => _managerSection(e.value, e.key)),
+                    if (unassignedTls.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: sectionCardDecoration(context),
+                        child: Column(
+                          children: [
+                            _node('Unassigned team leaders', const Color(0xFFD97706), fontSize: 14),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: unassignedTls.asMap().entries.map((e) => _teamColumn(e.value, e.key)).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (unassignedAgents.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: sectionCardDecoration(context),
+                        child: Column(
+                          children: [
+                            _node(
+                              'Unassigned agents',
+                              const Color(0xFFD97706),
+                              subtitle: '${unassignedAgents.length} total',
+                              fontSize: 14,
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: unassignedAgents
+                                  .map(
+                                    (a) => _node(
+                                      a['name']?.toString() ?? '–',
+                                      const Color(0xFFF1F5F9),
+                                      subtitle: a['branch_name']?.toString(),
+                                      textColor: const Color(0xFF475569),
+                                      fontSize: 12,
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
@@ -623,15 +1110,40 @@ class _BranchesScreenState extends State<BranchesScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Branches',
-      floatingActionButton: FloatingActionButton(onPressed: _add, child: const Icon(Icons.add)),
-      body: _loading
-          ? const AdminPageLoading()
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _list.length,
-                itemBuilder: (_, i) {
+      body: AdminStockPageShell(
+        eyebrow: 'Organization',
+        title: 'Branches',
+        subtitle: 'Store or office locations for purchases and reporting.',
+        trailing: AdminPrimaryButton(
+          label: 'Add branch',
+          icon: Icons.add,
+          onPressed: _add,
+        ),
+        summaryLabel: _list.isEmpty ? null : 'Summary',
+        summaryStats: _list.isEmpty
+            ? null
+            : [
+                AdminStockStat(label: 'Branches', value: formatCount(_list.length)),
+                AdminStockStat(
+                  label: 'Purchases linked',
+                  value: formatCount(_list.fold<int>(0, (sum, b) => sum + ((b['purchases_count'] as num?)?.toInt() ?? 0))),
+                ),
+              ],
+        body: _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) return const AdminPageLoading();
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: _list.isEmpty
+          ? const AdminPageEmpty(icon: Icons.store_mall_directory_outlined, title: 'No branches yet')
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              itemCount: _list.length,
+              itemBuilder: (_, i) {
                   final b = _list[i];
                   final id = (b['id'] as num?)?.toInt();
                   return Container(
@@ -660,7 +1172,6 @@ class _BranchesScreenState extends State<BranchesScreen> {
                   );
                 },
               ),
-            ),
     );
   }
 }
@@ -701,31 +1212,38 @@ class _ModelsScreenState extends State<ModelsScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Models',
-      body: _loading
-          ? const AdminPageLoading()
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _list.length,
-                itemBuilder: (_, i) {
-                  final p = _list[i];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: AdminSectionCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(p['name']?.toString() ?? '–', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Text('${p['category_name'] ?? ''} · stock ${p['stock_quantity'] ?? 0}'),
-                      ],
+      body: AdminStockPageShell(
+        eyebrow: 'Management',
+        title: 'Models',
+        subtitle: 'Product models linked to brands and stock quantities.',
+        body: _loading
+            ? const AdminPageLoading()
+            : _list.isEmpty
+                ? const AdminPageEmpty(icon: Icons.view_in_ar_outlined, title: 'No models yet')
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      itemCount: _list.length,
+                      itemBuilder: (_, i) {
+                        final p = _list[i];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: AdminSectionCard(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(p['name']?.toString() ?? '–', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                Text('${p['category_name'] ?? ''} · stock ${p['stock_quantity'] ?? 0}'),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    ),
-                  );
-                },
-              ),
-            ),
+                  ),
+      ),
     );
   }
 }
@@ -766,49 +1284,70 @@ class _AdminAgentCreditsScreenState extends State<AdminAgentCreditsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final stats = _stats;
+    final summary = stats == null
+        ? null
+        : [
+            AdminStockStat(label: 'Credits', value: formatCount(stats['count'])),
+            AdminStockStat(label: 'Total selling', value: formatTzs((stats['total_credit'] as num?)?.toDouble())),
+            AdminStockStat(label: 'Total profit', value: formatTzs((stats['total_profit'] as num?)?.toDouble()), highlight: true, highlightColor: const Color(0xFF059669)),
+            AdminStockStat(label: 'Pending', value: formatTzs((stats['total_pending'] as num?)?.toDouble()), highlight: true, highlightColor: const Color(0xFFD97706)),
+            AdminStockStat(label: 'Paid', value: formatTzs((stats['total_paid'] as num?)?.toDouble())),
+          ];
+
     return AdminScaffold(
       title: 'Agent credit sales',
-      body: _loading
-          ? const AdminPageLoading()
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (_stats != null)
-                    AdminSectionCard(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Pending ${NumberFormat('#,##0').format((_stats!['total_pending'] as num?)?.toDouble() ?? 0)} TZS',
-                      ),
+      body: AdminStockPageShell(
+        eyebrow: 'Agents',
+        title: 'Agent credit',
+        subtitle: 'Loans from agents to customers; record repayments per credit.',
+        summaryLabel: summary == null ? null : 'Summary (current filter)',
+        summaryStats: summary,
+        summaryColumns: 2,
+        body: _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) return const AdminPageLoading();
+    if (_list.isEmpty) {
+      return const AdminPageEmpty(icon: Icons.credit_card_outlined, title: 'No agent credits yet');
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        itemCount: _list.length,
+        itemBuilder: (_, i) {
+          final c = _list[i];
+          final id = (c['id'] as num?)?.toInt();
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: AdminSectionCard(
+              padding: const EdgeInsets.all(16),
+              child: InkWell(
+                onTap: id == null
+                    ? null
+                    : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => AdminAgentCreditDetailScreen(creditId: id)),
+                        ).then((_) => _load()),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(c['agent_name']?.toString() ?? '–', style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      '${c['product_name'] ?? ''} · pending ${NumberFormat('#,##0').format((c['pending_amount'] as num?)?.toDouble() ?? 0)}',
+                      style: TextStyle(color: kAdminTextMuted, fontSize: 13),
                     ),
-                  ..._list.map((c) {
-                    final id = (c['id'] as num?)?.toInt();
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: AdminSectionCard(
-                      padding: const EdgeInsets.all(16),
-                      child: InkWell(
-                        onTap: id == null
-                            ? null
-                            : () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => AdminAgentCreditDetailScreen(creditId: id)),
-                                ).then((_) => _load()),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(c['agent_name']?.toString() ?? '–', style: const TextStyle(fontWeight: FontWeight.w600)),
-                            Text('${c['product_name'] ?? ''} · pending ${NumberFormat('#,##0').format((c['pending_amount'] as num?)?.toDouble() ?? 0)}'),
-                          ],
-                        ),
-                      ),
-                      ),
-                    );
-                  }),
-                ],
+                  ],
+                ),
               ),
             ),
+          );
+        },
+      ),
     );
   }
 }
@@ -884,6 +1423,76 @@ class _AdminAgentCreditDetailScreenState extends State<AdminAgentCreditDetailScr
                       }
                     },
                     child: const Text('Record payment'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () async {
+                      try {
+                        await payRemainingAdminAgentCredit(widget.creditId);
+                        if (!mounted) return;
+                        Navigator.pop(context, true);
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                      }
+                    },
+                    child: const Text('Pay remaining balance'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => downloadReceiptAndNotify(
+                      context,
+                      endpoint: '/admin/agent-credits/${widget.creditId}/invoice',
+                      fallbackFilename: 'agent-credit-${widget.creditId}.pdf',
+                    ),
+                    child: const Text('Download invoice'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () async {
+                      final total = TextEditingController(text: c?['total_amount']?.toString() ?? '');
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Edit credit'),
+                          content: TextField(
+                            controller: total,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Total amount'),
+                          ),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                      try {
+                        await updateAdminAgentCredit(widget.creditId, {
+                          'total_amount': double.tryParse(total.text.trim()) ?? 0,
+                        });
+                        if (!mounted) return;
+                        await _load();
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                      }
+                    },
+                    child: const Text('Edit credit'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                    onPressed: () async {
+                      try {
+                        await deleteAdminAgentCredit(widget.creditId);
+                        if (!mounted) return;
+                        Navigator.pop(context, true);
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                      }
+                    },
+                    child: const Text('Delete credit'),
                   ),
                 ],
               ),

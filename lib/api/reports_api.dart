@@ -16,3 +16,17 @@ Future<Map<String, dynamic>> getReportBranchDetail(int branchId) async {
   }
   return data?['data'] as Map<String, dynamic>? ?? {};
 }
+
+Future<String> getAgentStockExportUrl({
+  String? dateFrom,
+  String? dateTo,
+  int? branchId,
+}) async {
+  final base = await resolveBaseUrl();
+  final q = <String>[];
+  if (dateFrom != null) q.add('date_from=$dateFrom');
+  if (dateTo != null) q.add('date_to=$dateTo');
+  if (branchId != null) q.add('branch_id=$branchId');
+  final qs = q.isEmpty ? '' : '?${q.join('&')}';
+  return '$base/admin/reports/agent-stock-export$qs';
+}

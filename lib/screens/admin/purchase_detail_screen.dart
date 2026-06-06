@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../api/product_list_api.dart';
+import '../../api/purchases_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 
@@ -57,6 +58,18 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         _error = e.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _deleteItem(int itemId) async {
+    final id = _purchaseId;
+    if (id == null) return;
+    try {
+      await deletePurchaseItem(id, itemId);
+      await _loadIfNeeded();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -147,6 +160,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           itemCount: _items.length,
                           itemBuilder: (context, index) {
                             final item = _items[index];
+                            final itemId = item['id'] is int ? item['id'] as int : int.tryParse(item['id']?.toString() ?? '');
                             final model = item['model']?.toString() ?? '–';
                             final category = item['category']?.toString() ?? '–';
                             final imei = item['imei_number']?.toString() ?? '–';
@@ -194,6 +208,12 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                     ),
                                   ),
+                                  if (itemId != null)
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 20),
+                                      onPressed: () => _deleteItem(itemId),
+                                      tooltip: 'Delete IMEI',
+                                    ),
                                 ],
                               ),
                             );

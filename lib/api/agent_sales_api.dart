@@ -38,3 +38,23 @@ Future<void> updateAgentSaleCommission({
     throw Exception(data?['message']?.toString() ?? 'Failed to update commission');
   }
 }
+
+Future<void> createAgentSale(Map<String, dynamic> body) async {
+  final res = await apiPost('/admin/agent-sales', body);
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200 && res.statusCode != 201) {
+    throw Exception(data?['message']?.toString() ?? 'Create failed');
+  }
+}
+
+Future<void> convertAgentSaleToCredit(int id) async {
+  final res = await apiPost('/admin/agent-sales/$id/convert-to-credit', {});
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Convert failed');
+}
+
+Future<void> deleteAgentSale(int id) async {
+  final res = await apiDelete('/admin/agent-sales/$id');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Delete failed');
+}

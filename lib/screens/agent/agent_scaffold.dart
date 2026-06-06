@@ -159,6 +159,15 @@ class _AgentDrawer extends StatelessWidget {
                     ],
                     onNavigate: navigate,
                   ),
+                  const SizedBox(height: _sectionSpacing),
+                  _DrawerSectionCard(
+                    title: 'Account',
+                    primary: primary,
+                    items: const [
+                      _NavItem(icon: Icons.person_outline_rounded, label: 'Profile', route: '/agent/profile'),
+                    ],
+                    onNavigate: navigate,
+                  ),
                 ],
               ),
             ),

@@ -92,3 +92,22 @@ Future<String> forgotPassword(String email) async {
   }
   return data['message']?.toString() ?? 'Check your email for reset instructions.';
 }
+
+Future<String> resetPasswordWithToken({
+  required String token,
+  required String email,
+  required String password,
+  required String passwordConfirmation,
+}) async {
+  final res = await apiPost('/password/reset', {
+    'token': token,
+    'email': email,
+    'password': password,
+    'password_confirmation': passwordConfirmation,
+  }, token: null);
+  final data = jsonDecode(res.body) as Map<String, dynamic>;
+  if (res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Reset failed');
+  }
+  return data['message']?.toString() ?? 'Password reset.';
+}

@@ -170,14 +170,37 @@ class _RegionalManagerDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   _DrawerSectionCard(
-                    title: 'Account',
+                    title: 'Shop',
                     primary: primary,
                     items: const [
                       _NavItem(
                         icon: Icons.storefront_rounded,
                         label: 'Browse shop',
-                        route: '/shop',
+                        route: '/regional-manager/shop/browse',
                       ),
+                      _NavItem(
+                        icon: Icons.shopping_cart_outlined,
+                        label: 'Cart',
+                        route: '/regional-manager/shop/cart',
+                      ),
+                      _NavItem(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Orders',
+                        route: '/regional-manager/shop/orders',
+                      ),
+                      _NavItem(
+                        icon: Icons.location_on_outlined,
+                        label: 'Addresses',
+                        route: '/regional-manager/shop/addresses',
+                      ),
+                    ],
+                    onNavigate: navigate,
+                  ),
+                  const SizedBox(height: 14),
+                  _DrawerSectionCard(
+                    title: 'Account',
+                    primary: primary,
+                    items: const [
                       _NavItem(
                         icon: Icons.person_outline_rounded,
                         label: 'Profile',

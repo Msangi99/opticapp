@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../api/users_api.dart';
-import '../../theme/app_theme.dart';
+import 'admin_create_user_screen.dart';
 import 'admin_scaffold.dart';
 import 'admin_user_detail_screen.dart';
+import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_users_ui.dart';
 
 class DealersScreen extends StatefulWidget {
   const DealersScreen({super.key});
@@ -34,31 +36,51 @@ class _DealersScreenState extends State<DealersScreen> {
     }
   }
 
+  Future<void> _openCreate() async {
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminCreateUserScreen(role: 'dealer')),
+    );
+    if (created == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Dealers',
-      body: _buildBody(context),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AdminUsersPageHeader(
+            eyebrow: 'Partners',
+            title: 'Dealers',
+            subtitle: 'Review applications, approve accounts, and suspend when needed.',
+            trailing: AdminPrimaryButton(label: 'Add dealer', onPressed: _openCreate, icon: Icons.add),
+          ),
+          const SizedBox(height: 12),
+          Expanded(child: _buildBody(context)),
+        ],
+      ),
     );
   }
 
   Widget _buildBody(BuildContext context) {
-    if (_loading) return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Loading…', style: TextStyle(color: Color(0xFF6B7280)))]));
-    if (_error != null) return SingleChildScrollView(physics: const AlwaysScrollableScrollPhysics(), child: Padding(padding: const EdgeInsets.all(20), child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)), child: Text(_error!, style: errorStyle()))));
-    if (_list.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.store_outlined, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)), const SizedBox(height: 16), Text('No dealers yet', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))]));
+    if (_loading) return const AdminPageLoading();
+    if (_error != null) return AdminPageError(message: _error!);
+    if (_list.isEmpty) {
+      return const AdminPageEmpty(icon: Icons.store_outlined, title: 'No dealers yet');
+    }
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         itemCount: _list.length,
         itemBuilder: (context, index) {
           final u = _list[index];
-          final name = u['name'] as String? ?? '–';
-          final email = u['email'] as String? ?? '–';
-          final business = u['business_name'] as String?;
-          final status = u['status'] as String? ?? 'pending';
           final id = (u['id'] as num?)?.toInt();
-          return InkWell(
+          return AdminUserListTile(
+            user: u,
+            showRole: false,
             onTap: id == null
                 ? null
                 : () => Navigator.push(
@@ -67,19 +89,12 @@ class _DealersScreenState extends State<DealersScreen> {
                         builder: (_) => AdminUserDetailScreen(userId: id, role: 'dealer'),
                       ),
                     ).then((_) => _load()),
-            child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: sectionCardDecoration(context),
-            child: Row(
-              children: [
-                CircleAvatar(backgroundColor: Colors.teal.withValues(alpha: 0.2), child: Text((name.isNotEmpty ? name[0] : '?').toUpperCase(), style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600))),
-                const SizedBox(width: 16),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)), Text(email, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)), if (business != null && business.isNotEmpty) Text(business, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12))])),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: (status == 'active' ? Colors.green : Colors.amber).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)), child: Text((status).toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: status == 'active' ? Colors.green.shade700 : Colors.amber.shade700))),
-              ],
-            ),
-          ),
+            trailing: u['business_name'] != null
+                ? Text(
+                    u['business_name'].toString(),
+                    style: TextStyle(fontSize: 12, color: kAdminTextMuted),
+                  )
+                : null,
           );
         },
       ),

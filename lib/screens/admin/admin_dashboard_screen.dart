@@ -374,6 +374,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               // Financial Metrics
                               _buildFinancialMetrics(),
                               const SizedBox(height: 24),
+                              _buildAlertWidgets(),
+                              const SizedBox(height: 24),
                               // Cash in Hand (Payment options)
                               _buildPaymentOptions(),
                               const SizedBox(height: 24),
@@ -555,6 +557,69 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlertWidgets() {
+    final aging = (_data?['agent_aging_assets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final overduePurchases = (_data?['overdue_purchases'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final overduePayables = (_data?['overdue_payables'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final breakdown = _data?['receivables_breakdown'] as Map<String, dynamic>?;
+    final distributorDetail = (breakdown?['distributor_detail'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final agentCredit = breakdown?['agent_credit'] as Map<String, dynamic>?;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeading('Alerts & receivables', 'Aging assets, overdue items, and breakdown.'),
+        if (aging.isNotEmpty)
+          _alertPanel(
+            title: 'Agent aging assets (${_data?['agent_aging_assets_count'] ?? aging.length})',
+            lines: aging.take(5).map((a) => '${a['agent_name'] ?? 'Agent'} · ${a['model'] ?? ''} · ${a['aging_days'] ?? 0}d').toList(),
+          ),
+        if (overduePurchases.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _alertPanel(
+            title: 'Overdue purchases (${overduePurchases.length})',
+            lines: overduePurchases.take(5).map((p) => '${p['name']} · pending ${_formatCurrency((p['pending_amount'] as num?)?.toDouble())}').toList(),
+          ),
+        ],
+        if (overduePayables.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _alertPanel(
+            title: 'Overdue payables (${overduePayables.length})',
+            lines: overduePayables.take(5).map((p) => '${p['description']} · ${_formatCurrency((p['amount'] as num?)?.toDouble())}').toList(),
+          ),
+        ],
+        const SizedBox(height: 12),
+        _alertPanel(
+          title: 'Receivables breakdown',
+          lines: [
+            'Distribution: ${_formatCurrency((breakdown?['distribution'] as num?)?.toDouble())}',
+            if (agentCredit != null)
+              'Agent credit outstanding: ${_formatCurrency((agentCredit['outstanding'] as num?)?.toDouble())} (${agentCredit['credits'] ?? 0} credits)',
+            ...distributorDetail.take(3).map((d) => '${d['dealer_name']}: ${_formatCurrency((d['outstanding'] as num?)?.toDouble())}${d['aging_label'] != null ? ' · ${d['aging_label']}' : ''}'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _alertPanel({required String title, required List<String> lines}) {
+    return Container(
+      decoration: proCardDecoration(context, outline: true, radius: 16),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ...lines.map((l) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(l, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF64748B))),
+              )),
         ],
       ),
     );

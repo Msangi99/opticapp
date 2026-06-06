@@ -4,6 +4,8 @@ import '../../api/branches_api.dart';
 import 'admin_branch_transfer_logs_screen.dart';
 import 'admin_scaffold.dart';
 import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_stock_ui.dart';
+import 'widgets/admin_users_ui.dart';
 
 class AdminBranchTransferScreen extends StatefulWidget {
   const AdminBranchTransferScreen({super.key});
@@ -139,28 +141,30 @@ class _AdminBranchTransferScreenState extends State<AdminBranchTransferScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Branch transfer',
-      actions: [
-        TextButton(
+      body: AdminStockPageShell(
+        eyebrow: 'Stock',
+        title: 'Branch transfer',
+        subtitle: 'Move unsold devices between branches (sets location on each IMEI).',
+        trailing: AdminOutlineButton(
+          label: 'Transfer history',
           onPressed: () => Navigator.push<void>(
             context,
             MaterialPageRoute(builder: (_) => const AdminBranchTransferLogsScreen()),
           ),
-          child: const Text('History'),
         ),
-      ],
-      body: _loadingBranches
-          ? const AdminPageLoading()
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_error != null)
-                    Padding(padding: const EdgeInsets.only(bottom: 12), child: AdminPageError(message: _error!)),
-                  AdminSectionCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+        body: _loadingBranches
+            ? const AdminPageLoading()
+            : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_error != null)
+                      Padding(padding: const EdgeInsets.only(bottom: 12), child: AdminPageError(message: _error!)),
+                    AdminSectionCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                   CheckboxListTile(
                     value: _unassigned,
                     onChanged: (v) {
@@ -247,6 +251,7 @@ class _AdminBranchTransferScreenState extends State<AdminBranchTransferScreen> {
                 ],
               ),
             ),
+      ),
     );
   }
 }

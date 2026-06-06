@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../api/stocks_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_stock_ui.dart';
+import 'widgets/admin_users_ui.dart';
 
 /// Stocks page: stock buckets with limits (mirrors web admin Stocks).
 class StocksScreen extends StatefulWidget {
@@ -52,139 +55,122 @@ class _StocksScreenState extends State<StocksScreen> {
     return int.tryParse(v.toString());
   }
 
-  Color _statusColor(bool underLimit) {
-    return underLimit ? Colors.orange : Colors.green;
+  Color _statusColor(bool underLimit) => underLimit ? Colors.orange : Colors.green;
+
+  List<AdminStockStat> _summaryStats() {
+    var totalLimit = 0;
+    var totalAdded = 0;
+    var complete = 0;
+    var pending = 0;
+    for (final s in _stocks) {
+      totalLimit += _parseInt(s['stock_limit']) ?? 0;
+      totalAdded += _parseInt(s['quantity']) ?? 0;
+      if (s['under_limit'] == true) {
+        pending++;
+      } else {
+        complete++;
+      }
+    }
+    return [
+      AdminStockStat(label: 'Rows', value: formatCount(_stocks.length)),
+      AdminStockStat(label: 'Total limit qty', value: formatCount(totalLimit)),
+      AdminStockStat(label: 'Total added', value: formatCount(totalAdded)),
+      AdminStockStat(label: 'Complete', value: formatCount(complete), highlight: true, highlightColor: const Color(0xFF059669)),
+      AdminStockStat(label: 'Pending', value: formatCount(pending), highlight: true, highlightColor: const Color(0xFFD97706)),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: widget.pageTitle,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, '/admin/add-product'),
-        icon: const Icon(Icons.add_box_rounded, color: Colors.black),
-        label: const Text('Add Product', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
-        backgroundColor: const Color(0xFFFA8900),
-        foregroundColor: Colors.black,
+      body: AdminStockPageShell(
+        eyebrow: 'Inventory',
+        title: 'Stocks',
+        subtitle: 'Stock buckets for the app: quantities, purchases, and status.',
+        trailing: AdminPrimaryButton(
+          label: 'Add product (IMEI)',
+          icon: Icons.add_box_rounded,
+          onPressed: () => Navigator.pushNamed(context, '/admin/add-product'),
+        ),
+        summaryLabel: _stocks.isEmpty ? null : 'Summary',
+        summaryStats: _stocks.isEmpty ? null : _summaryStats(),
+        summaryColumns: 2,
+        body: _buildBody(context),
       ),
-      body: _loading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading…', style: TextStyle(color: Color(0xFF6B7280))),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: _error != null
-                  ? SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(_error!, style: errorStyle()),
-                        ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (_loading) return const AdminPageLoading();
+    if (_error != null) return AdminPageError(message: _error!);
+    if (_stocks.isEmpty) {
+      return const AdminPageEmpty(icon: Icons.inventory_2_outlined, title: 'No stocks yet');
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        itemCount: _stocks.length,
+        itemBuilder: (context, index) {
+          final s = _stocks[index];
+          final name = s['name'] as String? ?? 'Stock #${s['id']}';
+          final limit = _parseInt(s['stock_limit']) ?? 0;
+          final qty = _parseInt(s['quantity']) ?? 0;
+          final underLimit = s['under_limit'] == true;
+          final statusColor = _statusColor(underLimit);
+          final statusLabel = underLimit ? 'Pending' : 'Complete';
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.pushNamed(context, '/admin/stocks/detail', arguments: {'id': s['id'], 'name': name}),
+              child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: sectionCardDecoration(context),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: kAdminBrandOrange.withValues(alpha: 0.15),
+                  child: Text(
+                    (name.isNotEmpty ? name[0] : '?').toUpperCase(),
+                    style: const TextStyle(color: kAdminBrandOrange, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Qty $qty / limit $limit',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: kAdminTextMuted),
                       ),
-                    )
-                  : _stocks.isEmpty
-                      ? SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          child: SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.6,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 64,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No stocks yet',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _stocks.length,
-                          itemBuilder: (context, index) {
-                            final s = _stocks[index];
-                            final name = s['name'] as String? ?? 'Stock #${s['id']}';
-                            final limit = _parseInt(s['stock_limit']) ?? 0;
-                            final qty = _parseInt(s['quantity']) ?? 0;
-                            final underLimit = s['under_limit'] == true;
-                            final statusColor = _statusColor(underLimit);
-                            final statusLabel = underLimit ? 'UNDER LIMIT' : 'OK';
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(14),
-                              decoration: sectionCardDecoration(context),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 10,
-                                    height: 46,
-                                    decoration: BoxDecoration(
-                                      color: statusColor,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'Qty: $qty / limit $limit',
-                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: statusColor.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      statusLabel,
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                            color: statusColor,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor),
+                  ),
+                ),
+              ],
             ),
+          ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

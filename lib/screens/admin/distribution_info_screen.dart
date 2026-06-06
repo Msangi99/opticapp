@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/distribution_sales_api.dart';
+import '../../api/invoice_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 
@@ -124,6 +125,56 @@ class _DistributionInfoScreenState extends State<DistributionInfoScreen> {
         onPressed: () => Navigator.pop(context),
         tooltip: 'Back',
       ),
+      actions: id != null
+          ? [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit',
+                onPressed: () async {
+                  final ok = await Navigator.pushNamed(
+                    context,
+                    '/admin/stock/distribution/form',
+                    arguments: {'id': id},
+                  );
+                  if (ok == true && mounted) _load(id!);
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.receipt_long_outlined),
+                tooltip: 'Invoice',
+                onPressed: () => downloadReceiptAndNotify(
+                  context,
+                  endpoint: '/admin/distribution-sales/$id/invoice',
+                  fallbackFilename: 'distribution-$id.pdf',
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Delete',
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete distribution sale?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                      ],
+                    ),
+                  );
+                  if (confirm != true || !mounted) return;
+                  try {
+                    await deleteDistributionSale(id);
+                    if (!mounted) return;
+                    Navigator.pop(context, true);
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                },
+              ),
+            ]
+          : null,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

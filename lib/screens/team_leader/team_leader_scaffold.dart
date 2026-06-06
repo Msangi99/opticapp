@@ -170,14 +170,37 @@ class _TeamLeaderDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   _DrawerSectionCard(
-                    title: 'Account',
+                    title: 'Shop',
                     primary: primary,
                     items: const [
                       _NavItem(
                         icon: Icons.storefront_rounded,
                         label: 'Browse shop',
-                        route: '/shop',
+                        route: '/team-leader/shop/browse',
                       ),
+                      _NavItem(
+                        icon: Icons.shopping_cart_outlined,
+                        label: 'Cart',
+                        route: '/team-leader/cart',
+                      ),
+                      _NavItem(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Orders',
+                        route: '/team-leader/orders',
+                      ),
+                      _NavItem(
+                        icon: Icons.location_on_outlined,
+                        label: 'Addresses',
+                        route: '/team-leader/addresses',
+                      ),
+                    ],
+                    onNavigate: navigate,
+                  ),
+                  const SizedBox(height: 14),
+                  _DrawerSectionCard(
+                    title: 'Account',
+                    primary: primary,
+                    items: const [
                       _NavItem(
                         icon: Icons.person_outline_rounded,
                         label: 'Profile',

@@ -33,3 +33,10 @@ Future<void> createStock(String name, int stockLimit) async {
   final data = jsonDecode(res.body) as Map<String, dynamic>;
   if (res.statusCode != 201) throw Exception(data['message']?.toString() ?? 'Failed to create stock');
 }
+
+Future<Map<String, dynamic>> getStockDetail(int id) async {
+  final res = await apiGet('/admin/stocks/$id');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Failed');
+  return data?['data'] as Map<String, dynamic>? ?? {};
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/categories_api.dart';
+import '../../api/admin_modules_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 
@@ -119,7 +120,32 @@ class _CategoryModelsScreenState extends State<CategoryModelsScreen> {
                           final m = _models[index];
                           final name = m['name'] as String? ?? '–';
                           final id = m['id'];
-                          return Container(
+                          return InkWell(
+                            onLongPress: id is int
+                                ? () async {
+                                    final c = TextEditingController(text: name);
+                                    final newName = await showDialog<String>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Edit model'),
+                                        content: TextField(controller: c),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                          FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Save')),
+                                        ],
+                                      ),
+                                    );
+                                    if (newName == null || newName.isEmpty) return;
+                                    try {
+                                      await updateProduct(id, name: newName);
+                                      _load();
+                                    } catch (e) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                                    }
+                                  }
+                                : null,
+                            child: Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
                             decoration: sectionCardDecoration(context),
@@ -155,6 +181,7 @@ class _CategoryModelsScreenState extends State<CategoryModelsScreen> {
                                   ),
                               ],
                             ),
+                          ),
                           );
                         },
                       ),

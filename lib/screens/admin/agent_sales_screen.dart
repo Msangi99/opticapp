@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../api/agent_sales_api.dart';
+import '../../api/invoice_api.dart';
 import '../../api/payment_options_api.dart';
 import 'admin_scaffold.dart';
 import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_stock_ui.dart';
 
 /// Admin: full list of agent sales.
 class AgentSalesScreen extends StatefulWidget {
@@ -158,22 +160,90 @@ class _AgentSalesScreenState extends State<AgentSalesScreen> {
     if (saved == true) _load();
   }
 
+  Future<void> _saleActions(Map<String, dynamic> sale) async {
+    final saleId = _parseId(sale['id']);
+    if (saleId == null) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(leading: const Icon(Icons.receipt_long), title: const Text('Download invoice'), onTap: () => Navigator.pop(ctx, 'invoice')),
+            ListTile(leading: const Icon(Icons.swap_horiz), title: const Text('Convert to credit'), onTap: () => Navigator.pop(ctx, 'convert')),
+            ListTile(leading: const Icon(Icons.delete_outline), title: const Text('Delete sale'), onTap: () => Navigator.pop(ctx, 'delete')),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+    try {
+      if (action == 'invoice') {
+        await downloadReceiptAndNotify(context, endpoint: '/admin/agent-sales/$saleId/invoice', fallbackFilename: 'agent-sale-$saleId.pdf');
+      } else if (action == 'convert') {
+        await convertAgentSaleToCredit(saleId);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Converted to credit.')));
+        _load();
+      } else if (action == 'delete') {
+        await deleteAgentSale(saleId);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sale deleted.')));
+        _load();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    double totalSell = 0;
+    double totalProfit = 0;
+    for (final s in _list) {
+      totalSell += (s['total_selling_value'] as num?)?.toDouble() ?? 0;
+      totalProfit += (s['profit'] as num?)?.toDouble() ?? 0;
+    }
+    final summary = _list.isEmpty
+        ? null
+        : [
+            AdminStockStat(label: 'Sales', value: formatCount(_list.length)),
+            AdminStockStat(label: 'Total selling', value: formatTzs(totalSell)),
+            AdminStockStat(label: 'Total profit', value: formatTzs(totalProfit), highlight: true, highlightColor: const Color(0xFF059669)),
+          ];
+
     return AdminScaffold(
-      title: 'Agent Sales',
-      body: _loading
-          ? const AdminPageLoading()
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: _error != null
-                  ? AdminPageError(message: _error!)
-                  : _list.isEmpty
-                      ? const AdminPageEmpty(icon: Icons.person_pin_circle_outlined, title: 'No agent sales yet')
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _list.length,
-                          itemBuilder: (context, index) {
+      title: 'Agent cash sales',
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Create sale',
+        onPressed: () => Navigator.pushNamed(context, '/admin/stock/pending-sales'),
+        child: const Icon(Icons.add),
+      ),
+      body: AdminStockPageShell(
+        eyebrow: 'Agents',
+        title: 'Agent sales',
+        subtitle: 'All sales by agents, including pending; set payment channel as needed.',
+        summaryLabel: summary == null ? null : 'Summary (current filter)',
+        summaryStats: summary,
+        summaryColumns: 1,
+        body: _buildList(context),
+      ),
+    );
+  }
+
+  Widget _buildList(BuildContext context) {
+    if (_loading) return const AdminPageLoading();
+    if (_error != null) return AdminPageError(message: _error!);
+    if (_list.isEmpty) {
+      return const AdminPageEmpty(icon: Icons.person_pin_circle_outlined, title: 'No agent sales yet');
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        itemCount: _list.length,
+        itemBuilder: (context, index) {
                             final s = _list[index];
                             final agentName = s['agent_name'] as String? ?? 'Unknown';
                             final customerName = s['customer_name'] as String? ?? '–';
@@ -246,21 +316,27 @@ class _AgentSalesScreenState extends State<AgentSalesScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 8),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: TextButton.icon(
-                                        onPressed: () => _editSale(s),
-                                        icon: const Icon(Icons.edit_outlined, size: 18),
-                                        label: const Text('Edit channel / commission'),
-                                      ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        TextButton.icon(
+                                          onPressed: () => _editSale(s),
+                                          icon: const Icon(Icons.edit_outlined, size: 18),
+                                          label: const Text('Edit'),
+                                        ),
+                                        TextButton.icon(
+                                          onPressed: () => _saleActions(s),
+                                          icon: const Icon(Icons.more_horiz, size: 18),
+                                          label: const Text('More'),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
                             );
-                          },
-                        ),
-            ),
+        },
+      ),
     );
   }
 }

@@ -208,3 +208,58 @@ Future<void> updateAdminPassword({
   final data = _jsonMap(res);
   if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
 }
+
+Future<void> updateProduct(int id, {required String name, String? description}) async {
+  final res = await apiPut('/admin/products/$id', {
+    'name': name,
+    if (description != null) 'description': description,
+  });
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
+}
+
+Future<void> bulkSelcomPayout() async {
+  final res = await apiPost('/admin/payout/bulk-selcom', {});
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Payout failed');
+}
+
+Future<void> updateAdminAgentCredit(int id, Map<String, dynamic> body) async {
+  final res = await apiPut('/admin/agent-credits/$id', body);
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
+}
+
+Future<void> deleteAdminAgentCredit(int id) async {
+  final res = await apiDelete('/admin/agent-credits/$id');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Delete failed');
+}
+
+Future<void> payRemainingAdminAgentCredit(int id) async {
+  final res = await apiPost('/admin/agent-credits/$id/pay-remaining', {});
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Payment failed');
+}
+
+Future<List<Map<String, dynamic>>> getRegions() => _list('/admin/regions');
+
+Future<void> createRegion(String name) async {
+  final res = await apiPost('/admin/regions', {'name': name});
+  final data = _jsonMap(res);
+  if (res.statusCode != 201 && res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Create failed');
+  }
+}
+
+Future<void> updateRegion(int id, String name) async {
+  final res = await apiPut('/admin/regions/$id', {'name': name});
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Update failed');
+}
+
+Future<void> deleteRegion(int id) async {
+  final res = await apiDelete('/admin/regions/$id');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Delete failed');
+}

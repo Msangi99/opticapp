@@ -3,6 +3,7 @@ import '../../api/settings_api.dart';
 import 'admin_scaffold.dart';
 import 'settings_roles_screen.dart';
 import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_stock_ui.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -69,8 +70,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final formBody = _loading
+        ? const AdminPageLoading()
+        : _error != null
+            ? AdminPageError(message: _error!)
+            : _settings.isEmpty
+                ? const AdminPageEmpty(icon: Icons.settings_outlined, title: 'No settings')
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      children: [
+                        ..._settings.keys.map<Widget>((key) {
+                          final k = key.toString();
+                          final c = _controllers[k];
+                          if (c == null) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: TextField(
+                              controller: c,
+                              decoration: InputDecoration(
+                                labelText: k,
+                                border: const OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              maxLines: k.toLowerCase().contains('address') || k.toLowerCase().contains('description') ? 3 : 1,
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 24),
+                        FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded), label: const Text('Save settings')),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            try {
+                              await runStorageLink();
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Storage directory ready.')));
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                            }
+                          },
+                          icon: const Icon(Icons.folder_outlined),
+                          label: const Text('Run storage-link setup'),
+                        ),
+                      ],
+                    ),
+                  );
+
     return AdminScaffold(
-      title: 'Settings',
+      title: 'Store Settings',
       actions: [
         IconButton(
           icon: const Icon(Icons.admin_panel_settings_rounded),
@@ -82,39 +132,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         if (_settings.isNotEmpty) IconButton(icon: const Icon(Icons.save_rounded), onPressed: _save, tooltip: 'Save'),
       ],
-      body: _loading
-          ? const AdminPageLoading()
-          : _error != null
-              ? AdminPageError(message: _error!)
-              : _settings.isEmpty
-                  ? const AdminPageEmpty(icon: Icons.settings_outlined, title: 'No settings')
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          ..._settings.keys.map<Widget>((key) {
-                            final k = key.toString();
-                            final c = _controllers[k];
-                            if (c == null) return const SizedBox.shrink();
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: TextField(
-                                controller: c,
-                                decoration: InputDecoration(
-                                  labelText: k,
-                                  border: const OutlineInputBorder(),
-                                  isDense: true,
-                                ),
-                                maxLines: k.toLowerCase().contains('address') || k.toLowerCase().contains('description') ? 3 : 1,
-                              ),
-                            );
-                          }),
-                          const SizedBox(height: 24),
-                          FilledButton.icon(onPressed: _save, icon: const Icon(Icons.save_rounded), label: const Text('Save settings')),
-                        ],
-                      ),
-                    ),
+      body: AdminStockPageShell(
+        eyebrow: 'Operations',
+        title: 'Store Settings',
+        subtitle: 'Configure store details, contact info, and operational preferences.',
+        body: formBody,
+      ),
     );
   }
 }

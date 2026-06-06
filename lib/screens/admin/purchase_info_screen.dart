@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/product_list_api.dart';
+import '../../api/purchases_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 
@@ -93,6 +94,41 @@ class _PurchaseInfoScreenState extends State<PurchaseInfoScreen> {
 
     return AdminScaffold(
       title: title,
+      actions: id != null
+          ? [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () async {
+                  final ok = await Navigator.pushNamed(context, '/admin/purchases/form', arguments: {'id': id});
+                  if (ok == true && id != null) _load(id);
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete purchase?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+                      ],
+                    ),
+                  );
+                  if (confirm != true || id == null) return;
+                  try {
+                    await deletePurchase(id);
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                },
+              ),
+            ]
+          : null,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_rounded),
         onPressed: () => Navigator.pop(context),

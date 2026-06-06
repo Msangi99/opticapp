@@ -66,3 +66,9 @@ Future<void> updateRolePermissions({
     throw Exception(data?['message']?.toString() ?? 'Failed to update permissions');
   }
 }
+
+Future<void> runStorageLink() async {
+  final res = await apiPost('/admin/settings/storage-link', {});
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Storage setup failed');
+}
