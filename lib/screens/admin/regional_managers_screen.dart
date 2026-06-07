@@ -3,6 +3,7 @@ import '../../api/users_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 import 'admin_user_detail_screen.dart';
+import 'widgets/admin_page_ui.dart';
 
 class RegionalManagersScreen extends StatefulWidget {
   const RegionalManagersScreen({super.key});
@@ -14,9 +15,13 @@ class RegionalManagersScreen extends StatefulWidget {
 class _RegionalManagersScreenState extends State<RegionalManagersScreen> {
   List<Map<String, dynamic>> _list = [];
   bool _loading = true;
+  String? _error;
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final list = await getRegionalManagers();
       if (!mounted) return;
@@ -24,9 +29,12 @@ class _RegionalManagersScreenState extends State<RegionalManagersScreen> {
         _list = list;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
     }
   }
 
@@ -41,8 +49,12 @@ class _RegionalManagersScreenState extends State<RegionalManagersScreen> {
     return AdminScaffold(
       title: 'Regional managers',
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+          ? const AdminPageLoading()
+          : _error != null
+              ? AdminPageError(message: _error!)
+              : _list.isEmpty
+                  ? const AdminPageEmpty(icon: Icons.public_outlined, title: 'No regional managers yet')
+                  : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),

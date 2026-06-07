@@ -97,7 +97,11 @@ Future<void> updateTenantProfile({
 // Organization
 Future<Map<String, dynamic>> getOrganizationTree() async {
   final res = await apiGet('/admin/organization-tree');
-  return _jsonMap(res);
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Failed to load organization tree');
+  }
+  return data;
 }
 
 Future<List<Map<String, dynamic>>> getPayables() => _list('/admin/payables');
