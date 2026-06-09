@@ -152,12 +152,16 @@ class _AssignRegionalManagerDevicesScreenState extends State<AssignRegionalManag
                   title: 'Regional manager',
                   child: DropdownButtonFormField<int>(
                     value: _regionalManagerId,
+                    isExpanded: true,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
                     items: _managers()
                         .map(
                           (m) => DropdownMenuItem(
                             value: (m['id'] as num).toInt(),
-                            child: Text('${m['name']} (${m['email']})'),
+                            child: Text(
+                              '${m['name']} (${m['email']})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         )
                         .toList(),
@@ -169,12 +173,16 @@ class _AssignRegionalManagerDevicesScreenState extends State<AssignRegionalManag
                   title: 'Purchase',
                   child: DropdownButtonFormField<int>(
                     value: _purchaseId,
+                    isExpanded: true,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
                     items: _purchases()
                         .map(
                           (p) => DropdownMenuItem(
                             value: (p['id'] as num).toInt(),
-                            child: Text(p['label']?.toString() ?? 'Purchase'),
+                            child: Text(
+                              p['label']?.toString() ?? 'Purchase',
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         )
                         .toList(),
@@ -191,6 +199,7 @@ class _AssignRegionalManagerDevicesScreenState extends State<AssignRegionalManag
                       ? const LinearProgressIndicator()
                       : DropdownButtonFormField<int>(
                           value: _productId,
+                          isExpanded: true,
                           decoration: const InputDecoration(border: OutlineInputBorder()),
                           items: _models
                               .map(
@@ -198,6 +207,7 @@ class _AssignRegionalManagerDevicesScreenState extends State<AssignRegionalManag
                                   value: (m['product_id'] as num).toInt(),
                                   child: Text(
                                     '${m['label']} (${m['available_imeis']} available)',
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               )
