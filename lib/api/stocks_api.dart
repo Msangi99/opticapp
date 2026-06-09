@@ -1,13 +1,50 @@
 import 'dart:convert';
 import 'client.dart';
 
+int? _parseInt(dynamic v) {
+  if (v == null) return null;
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return int.tryParse(v.toString());
+}
+
+List<Map<String, dynamic>> _stocksFromPurchases(List<Map<String, dynamic>> purchases) {
+  return purchases.map((p) {
+    final limit = _parseInt(p['quantity'] ?? p['limit']) ?? 0;
+    final added = _parseInt(p['added']) ?? 0;
+    final complete = limit > 0 && added >= limit;
+    return {
+      'id': p['id'],
+      'name': p['name']?.toString() ?? 'Purchase #${p['id']}',
+      'stock_limit': limit,
+      'stock_quantity': limit,
+      'quantity': added,
+      'added': added,
+      'under_limit': !complete,
+      'status': complete ? 'complete' : 'pending',
+      'from_purchase': true,
+    };
+  }).toList();
+}
+
 Future<List<Map<String, dynamic>>> getStocks() async {
   final res = await apiGet('/admin/stocks');
   final data = jsonDecode(res.body) as Map<String, dynamic>?;
   if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Failed to load stocks');
   final list = data?['data'];
-  if (list == null || list is! List) return [];
-  return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
+  if (list is List && list.isNotEmpty) {
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  // Mirror web admin: when Stock records are empty, rows come from stock purchases.
+  final purchasesRes = await apiGet('/admin/purchases');
+  final purchasesData = jsonDecode(purchasesRes.body) as Map<String, dynamic>?;
+  if (purchasesRes.statusCode != 200) {
+    throw Exception(purchasesData?['message']?.toString() ?? 'Failed to load stocks');
+  }
+  final purchases = purchasesData?['data'];
+  if (purchases is! List || purchases.isEmpty) return [];
+  return _stocksFromPurchases(purchases.cast<Map<String, dynamic>>());
 }
 
 Future<List<Map<String, dynamic>>> getStocksUnderLimit() async {
