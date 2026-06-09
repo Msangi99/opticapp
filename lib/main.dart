@@ -51,6 +51,12 @@ import 'screens/team_leader/team_leader_imei_register_screen.dart';
 import 'screens/team_leader/team_leader_profile_screen.dart';
 import 'screens/team_leader/team_leader_return_devices_screen.dart';
 import 'screens/admin/admin_more_screens.dart';
+import 'screens/admin/product_detail_screen.dart';
+import 'screens/admin/passthrough_detail_screen.dart';
+import 'screens/admin/stock_receipts_screen.dart';
+import 'screens/admin/branch_transfer_items_screen.dart';
+import 'screens/admin/admin_assign_agent_products_screen.dart';
+import 'screens/admin/selcom_payout_status_screen.dart';
 import 'screens/admin/subadmins_screen.dart';
 import 'screens/admin/regional_managers_screen.dart';
 import 'screens/admin/team_leaders_screen.dart';
@@ -134,6 +140,7 @@ class OpticApp extends StatelessWidget {
         '/admin/stock/distribution/info': (context) => const DistributionInfoScreen(),
         '/admin/stock/pending-sales': (context) => const PendingSalesScreen(),
         '/admin/stock/agent-transfers': (context) => const AdminAgentTransfersScreen(),
+        '/admin/assign-agent-products': (context) => const AdminAssignAgentProductsScreen(),
         '/admin/stock/branch-transfer': (context) => const AdminBranchTransferScreen(),
         '/admin/reports': (context) => const ReportsScreen(),
         '/admin/settings': (context) => const SettingsScreen(),
@@ -142,6 +149,10 @@ class OpticApp extends StatelessWidget {
         '/admin/imei-search': (context) => const ImeiSearchScreen(),
         '/admin/branches': (context) => const BranchesScreen(),
         '/admin/passthrough': (context) => const PassthroughSalesScreen(),
+        '/admin/passthrough-detail': (context) => const PassthroughDetailScreen(),
+        '/admin/product-detail': (context) => const ProductDetailScreen(),
+        '/admin/stock-receipts': (context) => const StockReceiptsScreen(),
+        '/admin/branch-transfer-items': (context) => const BranchTransferItemsScreen(),
         '/admin/agent-credits': (context) => const AdminAgentCreditsScreen(),
         '/admin/leads': (context) => const LeadsReportScreen(),
         '/admin/subscription': (context) => const SubscriptionScreen(),
@@ -150,6 +161,7 @@ class OpticApp extends StatelessWidget {
         '/admin/payables': (context) => const PayablesScreen(),
         '/admin/shop-records': (context) => const ShopRecordsScreen(),
         '/admin/payout': (context) => const PayoutScreen(),
+        '/admin/payout/selcom-status': (context) => const SelcomPayoutStatusScreen(),
         '/admin/profile': (context) => const AdminProfileScreen(),
         '/admin/subadmins': (context) => const SubadminsScreen(),
         '/admin/regional-managers': (context) => const RegionalManagersScreen(),

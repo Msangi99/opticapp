@@ -13,6 +13,7 @@ class SuperadminCommandCenterScreen extends StatefulWidget {
 }
 
 class _SuperadminCommandCenterScreenState extends State<SuperadminCommandCenterScreen> {
+  final _customCmdCtrl = TextEditingController();
   Map<String, dynamic>? _data;
   bool _loading = true;
   String? _error;
@@ -23,6 +24,12 @@ class _SuperadminCommandCenterScreenState extends State<SuperadminCommandCenterS
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _customCmdCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -96,6 +103,56 @@ class _SuperadminCommandCenterScreenState extends State<SuperadminCommandCenterS
                           ),
                         ),
                         const SizedBox(height: 16),
+                        Text('PHP Extensions', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: sectionCardDecoration(context),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Tracked', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  for (final ext in (_data?['tracked_extensions'] as List?)?.cast<String>() ?? [])
+                                    Chip(
+                                      label: Text(ext, style: const TextStyle(fontSize: 12)),
+                                      deleteIcon: const Icon(Icons.close, size: 16),
+                                      onDeleted: _running ? null : () => _run(() async {
+                                        final r = await untrackSuperadminExtension(ext);
+                                        await _load();
+                                        return 'Untracked $ext';
+                                      }),
+                                    ),
+                                  if (((_data?['tracked_extensions'] as List?)?.length ?? 0) == 0)
+                                    Text('None tracked', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text('All loaded', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  for (final ext in (_data?['extensions'] as List?)?.cast<String>() ?? [])
+                                    ActionChip(
+                                      label: Text(ext, style: const TextStyle(fontSize: 11)),
+                                      onPressed: _running ? null : () => _run(() async {
+                                        await trackSuperadminExtension(ext);
+                                        await _load();
+                                        return 'Tracking $ext';
+                                      }),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         Text('Artisan commands', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
                         Wrap(
@@ -140,6 +197,34 @@ class _SuperadminCommandCenterScreenState extends State<SuperadminCommandCenterS
                                     if (v != null) _run(() => seedSuperadminClass(v, force: true));
                                   },
                           ),
+                        const SizedBox(height: 20),
+                        Text('Run custom command', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _customCmdCtrl,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  hintText: 'e.g. cache:clear',
+                                  isDense: true,
+                                ),
+                                style: const TextStyle(fontSize: 14, fontFamily: 'monospace'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              onPressed: _running || _customCmdCtrl.text.trim().isEmpty
+                                  ? null
+                                  : () => _run(() async {
+                                      final r = await runSuperadminCommand(_customCmdCtrl.text.trim(), force: true);
+                                      return r['output']?.toString() ?? 'Command finished.';
+                                    }),
+                              child: const Text('Run'),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 20),
                         Text('Empty table', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),

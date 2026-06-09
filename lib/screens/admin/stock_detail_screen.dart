@@ -65,8 +65,19 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
     final purchases = (_data?['purchases'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final receipts = (_data?['receipts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
+    final stockId = _stockId(context);
+
     return AdminScaffold(
       title: name,
+      actions: stockId != null
+          ? [
+              IconButton(
+                icon: const Icon(Icons.receipt_long),
+                tooltip: 'Receipts',
+                onPressed: () => Navigator.pushNamed(context, '/admin/stock-receipts', arguments: {'stock_id': stockId}),
+              ),
+            ]
+          : null,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

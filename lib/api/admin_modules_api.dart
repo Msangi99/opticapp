@@ -37,6 +37,13 @@ Future<Map<String, dynamic>> getImeiItem(int id) async {
 // Passthrough
 Future<List<Map<String, dynamic>>> getPassthroughSales() => _list('/admin/passthrough-sales');
 
+Future<Map<String, dynamic>> getPassthroughSale(int id) async {
+  final res = await apiGet('/admin/passthrough-sales/$id');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Not found');
+  return data['data'] as Map<String, dynamic>? ?? {};
+}
+
 // Agent credits (admin)
 Future<Map<String, dynamic>> getAdminAgentCredits({String? period}) async {
   final res = await apiGet('/admin/agent-credits');
@@ -107,6 +114,15 @@ Future<Map<String, dynamic>> getOrganizationTree() async {
 Future<List<Map<String, dynamic>>> getPayables() => _list('/admin/payables');
 Future<List<Map<String, dynamic>>> getShopRecords() => _list('/admin/shop-records');
 Future<List<Map<String, dynamic>>> getPayoutRows() => _list('/admin/payout');
+
+Future<List<Map<String, dynamic>>> getStockReceipts(int stockId) async {
+  final res = await apiGet('/admin/stocks/$stockId/receipts');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Failed');
+  final list = data['data'];
+  if (list is! List) return [];
+  return list.cast<Map<String, dynamic>>();
+}
 
 // Products
 Future<List<Map<String, dynamic>>> getProducts({int? categoryId}) async {
@@ -266,4 +282,33 @@ Future<void> deleteRegion(int id) async {
   final res = await apiDelete('/admin/regions/$id');
   final data = _jsonMap(res);
   if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Delete failed');
+}
+
+Future<Map<String, dynamic>> subscribeTenant(String packageSlug, String paymentPhone) async {
+  final res = await apiPost('/admin/tenant/subscribe/$packageSlug', {
+    'payment_phone': paymentPhone,
+  });
+  final data = _jsonMap(res);
+  if (res.statusCode != 200 && res.statusCode != 201) {
+    throw Exception(data['message']?.toString() ?? 'Subscription failed');
+  }
+  return data['data'] as Map<String, dynamic>? ?? {};
+}
+
+Future<Map<String, dynamic>> getTenantSubscriptionStatus(int intentId) async {
+  final res = await apiGet('/admin/tenant/subscribe/intent/$intentId/status');
+  final map = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(map?['message']?.toString() ?? 'Failed to check status');
+  }
+  return map ?? {};
+}
+
+Future<Map<String, dynamic>> getSelcomPayoutStatus(int selcompayId) async {
+  final res = await apiGet('/admin/payout/selcom/$selcompayId/status');
+  final map = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(map?['message']?.toString() ?? 'Failed to check payout status');
+  }
+  return map ?? {};
 }

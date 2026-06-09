@@ -174,6 +174,11 @@ class PayoutScreen extends StatelessWidget {
             }
           },
         ),
+        IconButton(
+          icon: const Icon(Icons.check_circle_outline),
+          tooltip: 'Check Selcom status',
+          onPressed: () => Navigator.pushNamed(context, '/admin/payout/selcom-status'),
+        ),
       ],
       body: AdminDataListScreen(
       title: 'Pay out',
@@ -322,13 +327,26 @@ class _PassthroughSalesScreenState extends State<PassthroughSalesScreen> {
                 margin: const EdgeInsets.only(bottom: 10),
                 child: AdminSectionCard(
                   padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(p['name']?.toString() ?? 'Passthrough', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text('${p['date'] ?? ''} · ${p['product_name'] ?? ''}', style: TextStyle(color: kAdminTextMuted, fontSize: 13)),
-                      Text('Status: ${p['payment_status'] ?? ''}', style: TextStyle(color: kAdminTextMuted, fontSize: 12)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(p['name']?.toString() ?? 'Passthrough', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            Text('${p['date'] ?? ''} · ${p['product_name'] ?? ''}', style: TextStyle(color: kAdminTextMuted, fontSize: 13)),
+                            Text('Status: ${p['payment_status'] ?? ''}', style: TextStyle(color: kAdminTextMuted, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.info_outline, size: 20),
+                        tooltip: 'View details',
+                        onPressed: pid != null
+                            ? () => Navigator.pushNamed(context, '/admin/passthrough-detail', arguments: {'id': pid})
+                            : null,
+                      ),
                     ],
                   ),
                 ),
@@ -598,7 +616,9 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Map<String, dynamic>? _tenant;
   bool _loading = true;
+  bool _renewing = false;
   String? _error;
+  String? _renewStatus;
 
   @override
   void initState() {
@@ -624,6 +644,83 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         _error = e.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _renew() async {
+    final phoneCtrl = TextEditingController();
+    final slug = _tenant?['package_slug']?.toString();
+    if (slug == null || slug.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No package assigned — contact support.')));
+      return;
+    }
+    final phone = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Renew subscription'),
+        content: TextField(
+          controller: phoneCtrl,
+          decoration: const InputDecoration(labelText: 'Payment phone', hintText: 'e.g. 0712345678'),
+          keyboardType: TextInputType.phone,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, phoneCtrl.text.trim()), child: const Text('Pay')),
+        ],
+      ),
+    );
+    if (phone == null || phone.isEmpty) return;
+    setState(() {
+      _renewing = true;
+      _renewStatus = 'Initiating payment…';
+    });
+    try {
+      final result = await subscribeTenant(slug, phone);
+      final intentId = result['id'] as int?;
+      if (!mounted) return;
+      if (intentId == null) {
+        setState(() => _renewStatus = null);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subscription initiated. Approve on your phone.')));
+        return;
+      }
+      for (var i = 0; i < 30; i++) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        setState(() => _renewStatus = 'Checking payment status…');
+        final status = await getTenantSubscriptionStatus(intentId);
+        final s = status['status']?.toString() ?? '';
+        if (s == 'completed') {
+          setState(() {
+            _renewing = false;
+            _renewStatus = null;
+          });
+          await _load();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subscription renewed!')));
+          return;
+        }
+        if (s == 'failed' || s == 'timeout' || s == 'error') {
+          setState(() {
+            _renewing = false;
+            _renewStatus = null;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(status['message']?.toString() ?? 'Payment failed.')));
+          return;
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _renewing = false;
+        _renewStatus = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Still processing — check back later.')));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _renewing = false;
+        _renewStatus = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
     }
   }
 
@@ -676,7 +773,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               const Text('Subscription', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                               const SizedBox(height: 4),
                               Text(
-                                'Read-only — contact platform support to change package or status.',
+                                isActive
+                                    ? 'Your subscription is active.'
+                                    : 'Your subscription is suspended. Renew to restore access.',
                                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                               ),
                               const SizedBox(height: 20),
@@ -728,6 +827,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                   );
                                 },
                               ),
+                              if (!isActive) ...[
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton.icon(
+                                    onPressed: _renewing ? null : _renew,
+                                    icon: _renewing
+                                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                                        : const Icon(Icons.refresh),
+                                    label: Text(_renewing ? (_renewStatus ?? 'Renewing…') : 'Renew Subscription'),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

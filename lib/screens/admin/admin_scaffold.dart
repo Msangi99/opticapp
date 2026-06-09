@@ -198,7 +198,7 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                       title: 'Dashboard',
                       primary: primary,
                       items: const [
-                        _NavItem(icon: Icons.dashboard_rounded, label: 'Main dashboard', route: '/admin/dashboard'),
+                        _NavItem(icon: Icons.dashboard_rounded, label: 'Main Dashboard', route: '/admin/dashboard'),
                       ],
                       onNavigate: navigate,
                     ),
@@ -226,10 +226,6 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                       _NavItem(icon: Icons.person_pin_circle_rounded, label: 'Agent Cash Sales', route: '/admin/stock/agent-sales'),
                       _NavItem(icon: Icons.credit_card_rounded, label: 'Agent Credit Sales', route: '/admin/agent-credits'),
                       _NavItem(icon: Icons.alt_route_rounded, label: 'Branch transfer', route: '/admin/stock/branch-transfer'),
-                      _NavItem(icon: Icons.pending_actions_rounded, label: 'Pending sales', route: '/admin/stock/pending-sales'),
-                      _NavItem(icon: Icons.swap_horiz_rounded, label: 'Agent transfers', route: '/admin/stock/agent-transfers'),
-                      _NavItem(icon: Icons.account_balance_rounded, label: 'Payables', route: '/admin/payables'),
-                      _NavItem(icon: Icons.receipt_rounded, label: 'Shop records', route: '/admin/shop-records'),
                     ],
                     onNavigate: navigate,
                   ),
@@ -240,7 +236,6 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                     title: 'Operations',
                     primary: primary,
                     items: const [
-                      _NavItem(icon: Icons.shopping_bag_rounded, label: 'Orders', route: '/admin/orders'),
                       _NavItem(icon: Icons.account_balance_wallet_rounded, label: 'Channels', route: '/admin/channels'),
                       _NavItem(icon: Icons.payments_rounded, label: 'Expenses', route: '/admin/expenses'),
                       _NavItem(icon: Icons.outbond_rounded, label: 'Pay out', route: '/admin/payout'),
@@ -248,7 +243,6 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                       _NavItem(icon: Icons.leaderboard_rounded, label: 'Leads report', route: '/admin/leads'),
                       _NavItem(icon: Icons.apartment_rounded, label: 'Subscription', route: '/admin/subscription'),
                       _NavItem(icon: Icons.settings_rounded, label: 'Store Settings', route: '/admin/settings'),
-                      _NavItem(icon: Icons.map_rounded, label: 'Regions', route: '/admin/regions'),
                     ],
                     onNavigate: navigate,
                   ),
@@ -318,10 +312,6 @@ class _ManagementDrawerSection extends StatefulWidget {
   static const _usersItems = [
     _NavItem(icon: Icons.groups_2_rounded, label: 'All users', route: '/admin/users'),
     _NavItem(icon: Icons.account_tree_rounded, label: 'Organization tree', route: '/admin/organization'),
-    _NavItem(icon: Icons.badge_rounded, label: 'Agents', route: '/admin/agents'),
-    _NavItem(icon: Icons.admin_panel_settings_rounded, label: 'Subadmins', route: '/admin/subadmins'),
-    _NavItem(icon: Icons.public_rounded, label: 'Regional managers', route: '/admin/regional-managers'),
-    _NavItem(icon: Icons.groups_rounded, label: 'Team leaders', route: '/admin/team-leaders'),
     _NavItem(icon: Icons.store_rounded, label: 'Dealers', route: '/admin/dealers'),
     _NavItem(icon: Icons.local_shipping_rounded, label: 'Vendors', route: '/admin/vendors'),
   ];
@@ -421,17 +411,34 @@ class _ManagementDrawerSectionState extends State<_ManagementDrawerSection> {
                 ),
                 if (_usersExpanded) ...[
                   Divider(height: 1, thickness: 1, indent: 60, color: _kPanelBorder.withValues(alpha: 0.65)),
-                  for (var i = 0; i < _ManagementDrawerSection._usersItems.length; i++) ...[
-                    if (i > 0)
-                      Divider(height: 1, thickness: 1, indent: 60, color: _kPanelBorder.withValues(alpha: 0.65)),
-                    _DrawerNavRow(
-                      icon: _ManagementDrawerSection._usersItems[i].icon,
-                      label: _ManagementDrawerSection._usersItems[i].label,
-                      primary: widget.primary,
-                      compact: true,
-                      onTap: () => widget.onNavigate(_ManagementDrawerSection._usersItems[i].route),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          left: BorderSide(color: _kPanelBorder.withValues(alpha: 0.75)),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < _ManagementDrawerSection._usersItems.length; i++) ...[
+                              if (i > 0)
+                                Divider(height: 1, thickness: 1, color: _kPanelBorder.withValues(alpha: 0.65)),
+                              _DrawerNavRow(
+                                icon: _ManagementDrawerSection._usersItems[i].icon,
+                                label: _ManagementDrawerSection._usersItems[i].label,
+                                primary: widget.primary,
+                                compact: true,
+                                onTap: () => widget.onNavigate(_ManagementDrawerSection._usersItems[i].route),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ],
+                  ),
                 ],
               ],
             ),
@@ -551,17 +558,34 @@ class _DrawerSectionCardState extends State<_DrawerSectionCard> {
                   ),
                   if (_expanded) ...[
                     Divider(height: 1, thickness: 1, indent: 60, color: _kPanelBorder.withValues(alpha: 0.65)),
-                    for (var i = 0; i < widget.items.length; i++) ...[
-                      if (i > 0)
-                        Divider(height: 1, thickness: 1, indent: 60, color: _kPanelBorder.withValues(alpha: 0.65)),
-                      _DrawerNavRow(
-                        icon: widget.items[i].icon,
-                        label: widget.items[i].label,
-                        primary: widget.primary,
-                        compact: true,
-                        onTap: () => widget.onNavigate(widget.items[i].route),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border(
+                            left: BorderSide(color: _kPanelBorder.withValues(alpha: 0.75)),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Column(
+                            children: [
+                              for (var i = 0; i < widget.items.length; i++) ...[
+                                if (i > 0)
+                                  Divider(height: 1, thickness: 1, color: _kPanelBorder.withValues(alpha: 0.65)),
+                                _DrawerNavRow(
+                                  icon: widget.items[i].icon,
+                                  label: widget.items[i].label,
+                                  primary: widget.primary,
+                                  compact: true,
+                                  onTap: () => widget.onNavigate(widget.items[i].route),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
-                    ],
+                    ),
                   ],
                 ],
               ),
@@ -663,7 +687,7 @@ class _DrawerNavRow extends StatelessWidget {
         splashColor: primary.withValues(alpha: 0.08),
         highlightColor: primary.withValues(alpha: 0.05),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 12, vertical: compact ? 9 : 11),
+          padding: EdgeInsets.fromLTRB(compact ? 12 : 12, compact ? 9 : 11, 12, compact ? 9 : 11),
           child: Row(
             children: [
               if (!compact)

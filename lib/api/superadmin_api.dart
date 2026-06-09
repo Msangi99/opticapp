@@ -322,3 +322,35 @@ Future<Map<String, dynamic>> testSuperadminSelcom() async {
   }
   return map ?? {};
 }
+
+Future<Map<String, dynamic>> trackSuperadminExtension(String extension) async {
+  final res = await apiPost('/superadmin/command-center/extension-track', {
+    'extension': extension,
+  });
+  final map = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(map?['message']?.toString() ?? 'Failed to track extension');
+  }
+  return map?['data'] as Map<String, dynamic>? ?? {};
+}
+
+Future<Map<String, dynamic>> untrackSuperadminExtension(String extension) async {
+  final res = await apiPost('/superadmin/command-center/extension-untrack', {
+    'extension': extension,
+  });
+  final map = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(map?['message']?.toString() ?? 'Failed to untrack extension');
+  }
+  return map?['data'] as Map<String, dynamic>? ?? {};
+}
+
+Future<Map<String, dynamic>> runSuperadminCommand(String command, {bool force = false, bool seed = false}) async {
+  final q = '?force=${force ? 1 : 0}&seed=${seed ? 1 : 0}';
+  final res = await apiGet('/superadmin/command-center/run/$command$q');
+  final map = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(map?['message']?.toString() ?? 'Command failed');
+  }
+  return map?['data'] as Map<String, dynamic>? ?? {};
+}
