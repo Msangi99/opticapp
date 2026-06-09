@@ -208,7 +208,7 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                     _ManagementDrawerSection(primary: primary, onNavigate: navigate),
                   if (_canViewModule('customers') || _canViewModule('agents'))
                     const SizedBox(height: _sectionSpacing),
-                  if (_canViewModule('stocks') || _canViewModule('purchases'))
+                  if (_canViewModule('stock') || _canViewModule('branches'))
                     _DrawerSectionCard(
                     title: 'Stock Management',
                     primary: primary,
@@ -229,7 +229,7 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                     ],
                     onNavigate: navigate,
                   ),
-                  if (_canViewModule('stocks') || _canViewModule('purchases'))
+                  if (_canViewModule('stock') || _canViewModule('branches'))
                     const SizedBox(height: _sectionSpacing),
                   if (_canViewModule('expenses') || _canViewModule('reports') || _canViewModule('settings'))
                     _DrawerSectionCard(

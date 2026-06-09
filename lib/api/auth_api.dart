@@ -1,6 +1,15 @@
 import 'dart:convert';
 import 'client.dart';
 
+/// After login, point the app at the tenant vendor host (e.g. optic.opticedgeafrica.net/api).
+Future<void> _applyTenantApiBaseUrlIfNeeded(Map<String, dynamic> user) async {
+  final apiUrl = user['api_base_url']?.toString().trim();
+  if (apiUrl == null || apiUrl.isEmpty) return;
+  final existing = await getApiBaseUrlOverride();
+  if (existing != null && existing.isNotEmpty) return;
+  await setApiBaseUrlOverride(apiUrl);
+}
+
 Future<Map<String, dynamic>> login(String email, String password) async {
   final res = await apiPost('/login', {'email': email, 'password': password}, token: null);
   final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -9,10 +18,11 @@ Future<Map<String, dynamic>> login(String email, String password) async {
     throw Exception(msg.toString());
   }
   final token = data['token'] as String;
-  // Includes tenant_id and brand_name when the user belongs to a vendor tenant.
+  // Includes tenant_id, brand_name, and api_base_url when the user belongs to a vendor tenant.
   final user = data['user'] as Map<String, dynamic>;
   await setStoredToken(token);
   await setStoredUser(user);
+  await _applyTenantApiBaseUrlIfNeeded(user);
   return user;
 }
 
