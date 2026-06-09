@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../api/client.dart';
+import '../../widgets/portal_drawer.dart';
 
 const Color _kBrandDark = Color(0xFF232F3E);
-const Color _kBrandOrange = Color(0xFFFA8900);
-const Color _kDrawerCanvas = Color(0xFFF1F5F9);
-const Color _kPanel = Color(0xFFFFFFFF);
+const Color _kDrawerCanvas = Color(0xFFE8EDF5);
 const Color _kPanelBorder = Color(0xFFE2E8F0);
 const Color _kTextPrimary = Color(0xFF0F172A);
-const Color _kTextMuted = Color(0xFF64748B);
 
 class RegionalManagerScaffold extends StatefulWidget {
   const RegionalManagerScaffold({
@@ -83,20 +81,6 @@ class _RegionalManagerScaffoldState extends State<RegionalManagerScaffold> {
   }
 }
 
-class _NavItem {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.route,
-    this.comingSoon = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final String? route;
-  final bool comingSoon;
-}
-
 class _RegionalManagerDrawer extends StatelessWidget {
   const _RegionalManagerDrawer();
 
@@ -104,336 +88,94 @@ class _RegionalManagerDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
 
-    void navigate(_NavItem item) {
+    void navigate(String route) {
       Navigator.pop(context);
-      if (item.comingSoon) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${item.label} — coming soon on mobile')),
-        );
-        return;
-      }
-      if (item.route == '/regional-manager/dashboard') {
-        Navigator.pushReplacementNamed(context, item.route!);
-      } else if (item.route != null) {
-        Navigator.pushNamed(context, item.route!);
+      if (route == '/regional-manager/dashboard') {
+        Navigator.pushReplacementNamed(context, route);
+      } else {
+        Navigator.pushNamed(context, route);
       }
     }
 
-    return Drawer(
-      width: 300,
-      backgroundColor: _kDrawerCanvas,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            const _DrawerHeader(badge: 'REGIONAL MANAGER'),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-                children: [
-                  _DrawerSectionCard(
-                    title: 'Overview',
-                    primary: primary,
-                    items: const [
-                      _NavItem(
-                        icon: Icons.dashboard_rounded,
-                        label: 'Regional overview',
-                        route: '/regional-manager/dashboard',
-                      ),
-                    ],
-                    onNavigate: navigate,
-                  ),
-                  const SizedBox(height: 14),
-                  _DrawerSectionCard(
-                    title: 'Inventory',
-                    primary: primary,
-                    items: const [
-                      _NavItem(
-                        icon: Icons.qr_code_2_rounded,
-                        label: 'IMEI register',
-                        route: '/regional-manager/imei-register',
-                      ),
-                      _NavItem(
-                        icon: Icons.group_add_rounded,
-                        label: 'Assign to team leader',
-                        route: '/regional-manager/assign-team-leader',
-                      ),
-                      _NavItem(
-                        icon: Icons.undo_rounded,
-                        label: 'Return to admin',
-                        route: '/regional-manager/return-devices',
-                      ),
-                    ],
-                    onNavigate: navigate,
-                  ),
-                  const SizedBox(height: 14),
-                  _DrawerSectionCard(
-                    title: 'Shop',
-                    primary: primary,
-                    items: const [
-                      _NavItem(
-                        icon: Icons.storefront_rounded,
-                        label: 'Browse shop',
-                        route: '/regional-manager/shop/browse',
-                      ),
-                      _NavItem(
-                        icon: Icons.shopping_cart_outlined,
-                        label: 'Cart',
-                        route: '/regional-manager/shop/cart',
-                      ),
-                      _NavItem(
-                        icon: Icons.receipt_long_outlined,
-                        label: 'Orders',
-                        route: '/regional-manager/shop/orders',
-                      ),
-                      _NavItem(
-                        icon: Icons.location_on_outlined,
-                        label: 'Addresses',
-                        route: '/regional-manager/shop/addresses',
-                      ),
-                    ],
-                    onNavigate: navigate,
-                  ),
-                  const SizedBox(height: 14),
-                  _DrawerSectionCard(
-                    title: 'Account',
-                    primary: primary,
-                    items: const [
-                      _NavItem(
-                        icon: Icons.person_outline_rounded,
-                        label: 'Profile',
-                        route: '/regional-manager/profile',
-                      ),
-                    ],
-                    onNavigate: navigate,
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: _kPanel,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _kPanelBorder.withValues(alpha: 0.9)),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: _DrawerNavRow(
-                    icon: Icons.logout_rounded,
-                    label: 'Log out',
-                    primary: primary,
-                    iconTint: const Color(0xFFDC2626),
-                    iconBackground: const Color(0xFFFEE2E2),
-                    showChevron: false,
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await clearStoredAuth();
-                      if (!context.mounted) return;
-                      Navigator.pushReplacementNamed(context, '/login');
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DrawerHeader extends StatelessWidget {
-  const _DrawerHeader({required this.badge});
-
-  final String badge;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-        ),
-      ),
+    return PortalDrawerShell(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'opticedg',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.6,
-                    ),
+          const PortalDrawerHeader(
+            roleBadge: 'REGIONAL MANAGER',
+            badgeIsOrange: false,
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                PortalDrawerTheme.horizontalPadding,
+                10,
+                PortalDrawerTheme.horizontalPadding,
+                8,
               ),
-              Text(
-                'eafrica',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: _kBrandOrange,
-                      letterSpacing: -0.6,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: _kBrandOrange,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              badge,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: _kBrandDark,
-                    letterSpacing: 0.8,
-                  ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DrawerSectionCard extends StatelessWidget {
-  const _DrawerSectionCard({
-    required this.title,
-    required this.items,
-    required this.onNavigate,
-    required this.primary,
-  });
-
-  final String title;
-  final List<_NavItem> items;
-  final void Function(_NavItem item) onNavigate;
-  final Color primary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            title.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.85,
-                  color: _kTextMuted,
-                  fontSize: 11,
-                ),
-          ),
-        ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: _kPanel,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kPanelBorder.withValues(alpha: 0.9)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Column(
               children: [
-                for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      thickness: 1,
-                      indent: 60,
-                      color: _kPanelBorder.withValues(alpha: 0.65),
+                PortalDrawerSectionCard(
+                  title: 'Overview',
+                  primary: primary,
+                  items: const [
+                    PortalNavItem(
+                      icon: Icons.dashboard_rounded,
+                      label: 'Regional overview',
+                      route: '/regional-manager/dashboard',
                     ),
-                  _DrawerNavRow(
-                    icon: items[i].icon,
-                    label: items[i].label,
-                    primary: primary,
-                    onTap: () => onNavigate(items[i]),
-                  ),
-                ],
+                  ],
+                  onNavigate: navigate,
+                ),
+                const SizedBox(height: PortalDrawerTheme.sectionSpacing),
+                PortalDrawerSectionCard(
+                  title: 'Inventory',
+                  primary: primary,
+                  items: const [
+                    PortalNavItem(
+                      icon: Icons.qr_code_2_rounded,
+                      label: 'IMEI register',
+                      route: '/regional-manager/imei-register',
+                    ),
+                    PortalNavItem(
+                      icon: Icons.group_add_rounded,
+                      label: 'Assign to team leader',
+                      route: '/regional-manager/assign-team-leader',
+                    ),
+                    PortalNavItem(
+                      icon: Icons.undo_rounded,
+                      label: 'Return to admin',
+                      route: '/regional-manager/return-devices',
+                    ),
+                  ],
+                  onNavigate: navigate,
+                ),
+                const SizedBox(height: PortalDrawerTheme.sectionSpacing),
+                PortalDrawerSectionCard(
+                  title: 'Account',
+                  primary: primary,
+                  items: const [
+                    PortalNavItem(
+                      icon: Icons.person_outline_rounded,
+                      label: 'Profile',
+                      route: '/regional-manager/profile',
+                    ),
+                  ],
+                  onNavigate: navigate,
+                ),
               ],
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DrawerNavRow extends StatelessWidget {
-  const _DrawerNavRow({
-    required this.icon,
-    required this.label,
-    required this.primary,
-    required this.onTap,
-    this.iconTint,
-    this.iconBackground,
-    this.showChevron = true,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color primary;
-  final VoidCallback onTap;
-  final Color? iconTint;
-  final Color? iconBackground;
-  final bool showChevron;
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = iconTint ?? primary;
-    final bg = iconBackground ?? primary.withValues(alpha: 0.12);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, size: 21, color: fg),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.5,
-                        color: _kTextPrimary,
-                      ),
-                ),
-              ),
-              if (showChevron)
-                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 22),
-            ],
+          PortalDrawerFooter(
+            primary: primary,
+            showProfile: false,
+            onProfile: () {},
+            onLogout: () async {
+              Navigator.pop(context);
+              await clearStoredAuth();
+              if (!context.mounted) return;
+              Navigator.pushReplacementNamed(context, '/login');
+            },
           ),
-        ),
+        ],
       ),
     );
   }

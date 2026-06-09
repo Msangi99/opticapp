@@ -24,51 +24,52 @@ class AdminUsersPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      eyebrow.toUpperCase(),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.85,
-                            color: kAdminBrandOrange,
-                            fontSize: 11,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: kAdminBrandDark,
-                            letterSpacing: -0.4,
-                          ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: kAdminTextMuted,
-                              height: 1.4,
-                            ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  eyebrow.toUpperCase(),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.75,
+                        color: kAdminBrandOrange,
+                        fontSize: 10,
+                        height: 1.1,
                       ),
-                    ],
-                  ],
                 ),
-              ),
-              if (trailing != null) trailing!,
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: kAdminBrandDark,
+                        letterSpacing: -0.35,
+                        fontSize: 20,
+                        height: 1.15,
+                      ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: kAdminTextMuted,
+                          height: 1.3,
+                          fontSize: 12.5,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
           ),
+          if (trailing != null) trailing!,
         ],
       ),
     );
@@ -447,40 +448,65 @@ class AdminStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = highlight ? const Color(0xFFFA8900) : const Color(0xFFCBD5E1);
+    final valueColor = highlight ? const Color(0xFFB45309) : kAdminBrandDark;
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: highlight ? const Color(0xFFFCD34D) : const Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.circular(10),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            highlight ? const Color(0xFFFFF7ED) : const Color(0xFFF8FAFC),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(
+          color: highlight ? const Color(0xFFFED7AA) : const Color(0xFFE2E8F0),
+        ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: highlight ? const Color(0xFFB45309) : kAdminBrandDark,
-                ),
+          Container(
+            width: 2.5,
+            height: 30,
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: highlight ? const Color(0xFFB45309) : kAdminTextMuted,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: valueColor,
+                    height: 1.05,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: highlight ? const Color(0xFFB45309) : kAdminTextMuted,
+                    height: 1.15,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

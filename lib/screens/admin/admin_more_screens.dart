@@ -1072,29 +1072,30 @@ class _OrganizationTreeScreenState extends State<OrganizationTreeScreen> {
                     subtitle: 'Visual hierarchy: regional managers → team leaders → agents.',
                   ),
                   if (_stats != null) ...[
-                    const SizedBox(height: 12),
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 1.6,
-                      children: [
-                        AdminStatCard(value: '${_stats!['regional_managers']}', label: 'Regional managers'),
-                        AdminStatCard(value: '${_stats!['team_leaders']}', label: 'Team leaders'),
-                        AdminStatCard(value: '${_stats!['agents']}', label: 'Agents'),
+                    const SizedBox(height: 8),
+                    AdminStockSummaryPanel(
+                      label: 'Summary',
+                      margin: EdgeInsets.zero,
+                      stats: [
+                        AdminStockStat(
+                          label: 'Regional managers',
+                          value: '${_stats!['regional_managers']}',
+                        ),
+                        AdminStockStat(label: 'Team leaders', value: '${_stats!['team_leaders']}'),
+                        AdminStockStat(label: 'Agents', value: '${_stats!['agents']}'),
                         if ((_stats!['unassigned_team_leaders'] as num? ?? 0) > 0)
-                          AdminStatCard(
-                            value: '${_stats!['unassigned_team_leaders']}',
+                          AdminStockStat(
                             label: 'Unassigned TLs',
+                            value: '${_stats!['unassigned_team_leaders']}',
                             highlight: true,
+                            highlightColor: const Color(0xFFD97706),
                           ),
                         if ((_stats!['unassigned_agents'] as num? ?? 0) > 0)
-                          AdminStatCard(
-                            value: '${_stats!['unassigned_agents']}',
+                          AdminStockStat(
                             label: 'Unassigned agents',
+                            value: '${_stats!['unassigned_agents']}',
                             highlight: true,
+                            highlightColor: const Color(0xFFD97706),
                           ),
                       ],
                     ),

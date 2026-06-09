@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../api/reports_api.dart';
 import '../../api/client.dart';
-import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 import 'report_branch_detail_screen.dart';
 import 'widgets/admin_page_ui.dart';
@@ -78,24 +77,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Summary', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                          AdminStockSummaryPanel(
+                            label: 'Summary',
+                            margin: EdgeInsets.zero,
+                            stats: [
+                              AdminStockStat(
+                                label: 'Total sales',
+                                value: _formatCurrency((_data?['total_sales'] as num?)?.toDouble() ?? 0),
+                                highlight: true,
+                                highlightColor: const Color(0xFF059669),
+                              ),
+                              AdminStockStat(
+                                label: 'Total orders',
+                                value: '${_data?['total_orders'] ?? 0}',
+                              ),
+                              AdminStockStat(
+                                label: 'Customers',
+                                value: '${_data?['total_customers'] ?? 0}',
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(child: _StatCard(icon: Icons.sell_rounded, label: 'Total Sales', value: _formatCurrency((_data?['total_sales'] as num?)?.toDouble() ?? 0), color: Colors.green)),
-                              const SizedBox(width: 12),
-                              Expanded(child: _StatCard(icon: Icons.receipt_long_rounded, label: 'Total Orders', value: '${_data?['total_orders'] ?? 0}', color: Colors.purple)),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(child: _StatCard(icon: Icons.people_rounded, label: 'Total Customers', value: '${_data?['total_customers'] ?? 0}', color: Colors.blue)),
-                              const SizedBox(width: 12),
-                              const Expanded(child: SizedBox()),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
                           Text('Sales (last 7 days)', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                           const SizedBox(height: 8),
                           if (_data?['sales_by_day'] is Map) ...(_data!['sales_by_day'] as Map).entries.map<Widget>((e) => Padding(
@@ -148,33 +150,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       ),
                     ),
                   ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatCard({required this.icon, required this.label, required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: sectionCardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: color, size: 24)),
-          const SizedBox(height: 12),
-          Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 4),
-          Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-        ],
       ),
     );
   }

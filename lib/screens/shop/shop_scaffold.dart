@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../api/client.dart';
+import '../../widgets/portal_drawer.dart';
 
 const Color kShopBrandDark = Color(0xFF232F3E);
 const Color kShopBrandOrange = Color(0xFFFA8900);
-const Color kShopCanvas = Color(0xFFF1F5F9);
+const Color kShopCanvas = Color(0xFFE8EDF5);
 
 enum ShopPortalMode { customer, teamLeader, regionalManager }
 
@@ -115,17 +116,37 @@ class _ShopScaffoldState extends State<ShopScaffold> {
         backgroundColor: Colors.white,
         foregroundColor: kShopBrandDark,
         elevation: 0,
-        title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        scrolledUnderElevation: 0.5,
+        shadowColor: Colors.black.withValues(alpha: 0.08),
+        surfaceTintColor: Colors.transparent,
+        title: Text(
+          widget.title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: -0.25,
+              ),
+        ),
         leading: widget.showDrawer
             ? IconButton(
                 icon: const Icon(Icons.menu_rounded),
                 onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                tooltip: 'Menu',
               )
             : IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () => Navigator.maybePop(context),
+                tooltip: 'Back',
               ),
         actions: widget.actions,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(
+            height: 1,
+            thickness: 1,
+            color: PortalDrawerTheme.panelBorder.withValues(alpha: 0.95),
+          ),
+        ),
       ),
       drawer: widget.showDrawer ? _buildDrawer(context) : null,
       body: widget.body,
@@ -134,6 +155,8 @@ class _ShopScaffoldState extends State<ShopScaffold> {
   }
 
   Widget _buildDrawer(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
     void go(String route, {bool replace = false}) {
       Navigator.pop(context);
       if (replace) {
@@ -143,83 +166,85 @@ class _ShopScaffoldState extends State<ShopScaffold> {
       }
     }
 
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: kShopBrandDark,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('opticedge', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20)),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: kShopBrandOrange, borderRadius: BorderRadius.circular(6)),
-                    child: Text(_badge, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                children: [
-                  if (widget.mode == ShopPortalMode.customer)
-                    ListTile(
-                      leading: const Icon(Icons.dashboard_outlined),
-                      title: const Text('Dashboard'),
-                      onTap: () => go('/shop/dashboard', replace: true),
-                    ),
-                  ListTile(
-                    leading: const Icon(Icons.storefront_outlined),
-                    title: const Text('Browse products'),
-                    onTap: () => go(_browseRoute, replace: widget.mode != ShopPortalMode.customer),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.shopping_cart_outlined),
-                    title: const Text('Cart'),
-                    onTap: () => go(_cartRoute),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.receipt_long_outlined),
-                    title: const Text('Orders'),
-                    onTap: () => go(_ordersRoute),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.location_on_outlined),
-                    title: const Text('Addresses'),
-                    onTap: () => go(_addressesRoute),
-                  ),
-                  if (_profileRoute != null)
-                    ListTile(
-                      leading: const Icon(Icons.person_outline),
-                      title: const Text('Profile'),
-                      onTap: () => go(_profileRoute!),
-                    ),
-                  if (widget.mode != ShopPortalMode.customer)
-                    ListTile(
-                      leading: const Icon(Icons.arrow_back),
-                      title: const Text('Back to portal'),
-                      onTap: () => go(_dashboardRoute, replace: true),
-                    ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Log out'),
-              onTap: () async {
-                Navigator.pop(context);
-                await clearStoredAuth();
-                if (!context.mounted) return;
-                Navigator.pushReplacementNamed(context, '/login');
-              },
-            ),
-          ],
+    final browseItems = <PortalNavItem>[
+      if (widget.mode == ShopPortalMode.customer)
+        const PortalNavItem(
+          icon: Icons.dashboard_rounded,
+          label: 'Dashboard',
+          route: '/shop/dashboard',
         ),
+      PortalNavItem(
+        icon: Icons.storefront_rounded,
+        label: 'Browse products',
+        route: _browseRoute,
+      ),
+      PortalNavItem(icon: Icons.shopping_cart_rounded, label: 'Cart', route: _cartRoute),
+      PortalNavItem(icon: Icons.receipt_long_rounded, label: 'Orders', route: _ordersRoute),
+      PortalNavItem(icon: Icons.location_on_rounded, label: 'Addresses', route: _addressesRoute),
+    ];
+
+    final accountItems = <PortalNavItem>[
+      if (_profileRoute != null)
+        PortalNavItem(icon: Icons.person_outline_rounded, label: 'Profile', route: _profileRoute!),
+      if (widget.mode != ShopPortalMode.customer)
+        PortalNavItem(
+          icon: Icons.arrow_back_rounded,
+          label: 'Back to portal',
+          route: _dashboardRoute,
+        ),
+    ];
+
+    return PortalDrawerShell(
+      child: Column(
+        children: [
+          PortalDrawerHeader(roleBadge: _badge),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                PortalDrawerTheme.horizontalPadding,
+                10,
+                PortalDrawerTheme.horizontalPadding,
+                8,
+              ),
+              children: [
+                PortalDrawerSectionCard(
+                  title: 'Shop',
+                  primary: primary,
+                  items: browseItems,
+                  onNavigate: (route) {
+                    final replaceDashboard = route == '/shop/dashboard';
+                    final replaceBrowse = widget.mode != ShopPortalMode.customer &&
+                        (route == _browseRoute);
+                    go(route, replace: replaceDashboard || replaceBrowse);
+                  },
+                ),
+                if (accountItems.isNotEmpty) ...[
+                  const SizedBox(height: PortalDrawerTheme.sectionSpacing),
+                  PortalDrawerSectionCard(
+                    title: 'Account',
+                    primary: primary,
+                    items: accountItems,
+                    onNavigate: (route) {
+                      final replace = route == _dashboardRoute;
+                      go(route, replace: replace);
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          PortalDrawerFooter(
+            primary: primary,
+            showProfile: false,
+            onProfile: () {},
+            onLogout: () async {
+              Navigator.pop(context);
+              await clearStoredAuth();
+              if (!context.mounted) return;
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+          ),
+        ],
       ),
     );
   }
