@@ -1173,9 +1173,13 @@ class BranchesScreen extends StatefulWidget {
 class _BranchesScreenState extends State<BranchesScreen> {
   List<Map<String, dynamic>> _list = [];
   bool _loading = true;
+  String? _error;
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final list = await getBranches();
       if (!mounted) return;
@@ -1185,7 +1189,10 @@ class _BranchesScreenState extends State<BranchesScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
     }
   }
 
@@ -1248,6 +1255,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
 
   Widget _buildBody() {
     if (_loading) return const AdminPageLoading();
+    if (_error != null) return AdminPageError(message: _error!);
     return RefreshIndicator(
       onRefresh: _load,
       child: _list.isEmpty
@@ -1371,6 +1379,7 @@ class _AdminAgentCreditsScreenState extends State<AdminAgentCreditsScreen> {
   List<Map<String, dynamic>> _list = [];
   Map<String, dynamic>? _stats;
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -1379,7 +1388,10 @@ class _AdminAgentCreditsScreenState extends State<AdminAgentCreditsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await getAdminAgentCredits();
       if (!mounted) return;
@@ -1390,7 +1402,10 @@ class _AdminAgentCreditsScreenState extends State<AdminAgentCreditsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
     }
   }
 
@@ -1423,6 +1438,7 @@ class _AdminAgentCreditsScreenState extends State<AdminAgentCreditsScreen> {
 
   Widget _buildBody() {
     if (_loading) return const AdminPageLoading();
+    if (_error != null) return AdminPageError(message: _error!);
     if (_list.isEmpty) {
       return const AdminPageEmpty(icon: Icons.credit_card_outlined, title: 'No agent credits yet');
     }

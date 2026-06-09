@@ -3,7 +3,7 @@ import 'client.dart';
 
 /// List all agent sales for admin dashboard.
 Future<List<Map<String, dynamic>>> getAgentSales() async {
-  final res = await apiGet('/admin/agent-sales');
+  final res = await apiGet('/admin/agent-sales?limit=500');
   final data = jsonDecode(res.body) as Map<String, dynamic>?;
   if (res.statusCode != 200) {
     throw Exception(data?['message']?.toString() ?? 'Failed to load agent sales');

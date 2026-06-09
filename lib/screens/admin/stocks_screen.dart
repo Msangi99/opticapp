@@ -63,8 +63,8 @@ class _StocksScreenState extends State<StocksScreen> {
     var complete = 0;
     var pending = 0;
     for (final s in _stocks) {
-      totalLimit += _parseInt(s['stock_limit']) ?? 0;
-      totalAdded += _parseInt(s['quantity']) ?? 0;
+      totalLimit += _parseInt(s['stock_limit'] ?? s['stock_quantity']) ?? 0;
+      totalAdded += _parseInt(s['quantity'] ?? s['added']) ?? 0;
       if (s['under_limit'] == true) {
         pending++;
       } else {
@@ -115,16 +115,23 @@ class _StocksScreenState extends State<StocksScreen> {
         itemBuilder: (context, index) {
           final s = _stocks[index];
           final name = s['name'] as String? ?? 'Stock #${s['id']}';
-          final limit = _parseInt(s['stock_limit']) ?? 0;
-          final qty = _parseInt(s['quantity']) ?? 0;
+          final limit = _parseInt(s['stock_limit'] ?? s['stock_quantity']) ?? 0;
+          final qty = _parseInt(s['quantity'] ?? s['added']) ?? 0;
           final underLimit = s['under_limit'] == true;
+          final fromPurchase = s['from_purchase'] == true;
           final statusColor = _statusColor(underLimit);
           final statusLabel = underLimit ? 'Pending' : 'Complete';
           return Material(
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => Navigator.pushNamed(context, '/admin/stocks/detail', arguments: {'id': s['id'], 'name': name}),
+              onTap: () {
+                if (fromPurchase) {
+                  Navigator.pushNamed(context, '/admin/purchases/info', arguments: {'id': s['id']});
+                } else {
+                  Navigator.pushNamed(context, '/admin/stocks/detail', arguments: {'id': s['id'], 'name': name});
+                }
+              },
               child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),

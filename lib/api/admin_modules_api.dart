@@ -47,7 +47,11 @@ Future<Map<String, dynamic>> getPassthroughSale(int id) async {
 // Agent credits (admin)
 Future<Map<String, dynamic>> getAdminAgentCredits({String? period}) async {
   final res = await apiGet('/admin/agent-credits');
-  return _jsonMap(res);
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Failed to load agent credits');
+  }
+  return data;
 }
 
 Future<Map<String, dynamic>> getAdminAgentCredit(int id) async {
