@@ -136,7 +136,7 @@ class _AgentTransferScreenState extends State<AgentTransferScreen> {
         message: _messageController.text.trim().isEmpty ? null : _messageController.text.trim(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transfer request submitted.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transfer request submitted. Waiting for recipient to accept.')));
       Navigator.pushReplacementNamed(context, '/agent/transfers');
     } catch (e) {
       if (!mounted) return;
@@ -248,7 +248,7 @@ class _AgentTransferScreenState extends State<AgentTransferScreen> {
                     TextField(
                       controller: _messageController,
                       decoration: const InputDecoration(
-                        labelText: 'Note to admin (optional)',
+                        labelText: 'Note to recipient (optional)',
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 2,

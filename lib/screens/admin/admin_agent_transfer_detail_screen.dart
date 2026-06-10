@@ -16,19 +16,11 @@ class _AdminAgentTransferDetailScreenState extends State<AdminAgentTransferDetai
   Map<String, dynamic> _data = {};
   bool _loading = true;
   String? _error;
-  final _noteController = TextEditingController();
-  bool _busy = false;
 
   @override
   void initState() {
     super.initState();
     _load();
-  }
-
-  @override
-  void dispose() {
-    _noteController.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -49,36 +41,6 @@ class _AdminAgentTransferDetailScreenState extends State<AdminAgentTransferDetai
         _error = e.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
-    }
-  }
-
-  Future<void> _approve() async {
-    setState(() => _busy = true);
-    try {
-      await approveAdminAgentTransfer(widget.transferId, adminNote: _noteController.text.trim().isEmpty ? null : _noteController.text.trim());
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Approved.')));
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _reject() async {
-    setState(() => _busy = true);
-    try {
-      await rejectAdminAgentTransfer(widget.transferId, adminNote: _noteController.text.trim().isEmpty ? null : _noteController.text.trim());
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rejected.')));
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -127,7 +89,7 @@ class _AdminAgentTransferDetailScreenState extends State<AdminAgentTransferDetai
                             ],
                             if ((_data['admin_note'] as String?)?.isNotEmpty == true) ...[
                               const SizedBox(height: 8),
-                              Text('Admin note: ${_data['admin_note']}', style: Theme.of(context).textTheme.bodyMedium),
+                              Text('Response note: ${_data['admin_note']}', style: Theme.of(context).textTheme.bodyMedium),
                             ],
                           ],
                         ),
@@ -166,31 +128,12 @@ class _AdminAgentTransferDetailScreenState extends State<AdminAgentTransferDetai
                       })(),
                       if (pending) ...[
                         const SizedBox(height: 24),
-                        TextField(
-                          controller: _noteController,
-                          decoration: const InputDecoration(
-                            labelText: 'Admin note (optional)',
-                            border: OutlineInputBorder(),
+                        AdminSectionCard(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'Waiting for ${(_data['to_agent'] as Map<String, dynamic>?)?['name'] ?? 'the receiving agent'} to accept or decline.',
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton(
-                                onPressed: _busy ? null : _approve,
-                                child: const Text('Approve'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: _busy ? null : _reject,
-                                child: const Text('Reject'),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ],

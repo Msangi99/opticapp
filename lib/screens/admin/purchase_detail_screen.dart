@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../api/admin_modules_api.dart';
 import '../../api/product_list_api.dart';
 import '../../api/purchases_api.dart';
 import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
+import 'widgets/imei_track_widgets.dart';
 
-/// Detail page for one purchase: list of model, category, IMEI.
+/// Detail page for one purchase/stock: list of IMEIs with expandable track info.
 class PurchaseDetailScreen extends StatefulWidget {
   const PurchaseDetailScreen({super.key});
 
@@ -19,10 +21,17 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   String? _error;
   String _purchaseName = '';
   int? _loadedId;
+  final Set<int> _expanded = {};
+  final Map<int, Map<String, dynamic>> _trackCache = {};
+  final Set<int> _trackLoading = {};
 
   int? get _purchaseId {
     final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is Map<String, dynamic>) return args['id'] as int?;
+    if (args is Map) {
+      final id = args['id'];
+      if (id is int) return id;
+      return int.tryParse(id?.toString() ?? '');
+    }
     return null;
   }
 
@@ -30,8 +39,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is Map<String, dynamic>) {
-      _purchaseName = args['name'] as String? ?? 'Purchase';
+    if (args is Map && args['name'] != null) {
+      _purchaseName = args['name'].toString();
     }
     final id = _purchaseId;
     if (id != null && id != _loadedId) _loadIfNeeded();
@@ -51,6 +60,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         _items = list;
         _loading = false;
         _loadedId = id;
+        _expanded.clear();
+        _trackCache.clear();
       });
     } catch (e) {
       if (!mounted) return;
@@ -58,6 +69,29 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         _error = e.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _toggleExpand(int itemId) async {
+    if (_expanded.contains(itemId)) {
+      setState(() => _expanded.remove(itemId));
+      return;
+    }
+    setState(() => _expanded.add(itemId));
+    if (_trackCache.containsKey(itemId)) return;
+
+    setState(() => _trackLoading.add(itemId));
+    try {
+      final detail = await getImeiItem(itemId);
+      if (!mounted) return;
+      setState(() {
+        _trackCache[itemId] = detail;
+        _trackLoading.remove(itemId);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _trackLoading.remove(itemId));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 
@@ -73,14 +107,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
   }
 
-  void _copyToClipboard(String text, String label) {
-    Clipboard.setData(ClipboardData(text: text));
+  void _copyImei(String imei) {
+    Clipboard.setData(ClipboardData(text: imei));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$label copied to clipboard'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+      const SnackBar(content: Text('IMEI copied'), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
     );
   }
 
@@ -94,125 +124,117 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         tooltip: 'Back',
       ),
       body: _loading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading…', style: TextStyle(color: Color(0xFF6B7280))),
-                ],
-              ),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadIfNeeded,
               child: _error != null
-                  ? SingleChildScrollView(
+                  ? ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(_error!, style: errorStyle()),
-                        ),
-                      ),
+                      padding: const EdgeInsets.all(20),
+                      children: [Text(_error!, style: errorStyle())],
                     )
                   : _items.isEmpty
-                      ? SingleChildScrollView(
+                      ? ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          child: SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.6,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.devices_outlined,
-                                    size: 64,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No items found',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'No products (model / category / IMEI)\nfor this purchase yet.',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.5,
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.devices_outlined, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                                    const SizedBox(height: 16),
+                                    Text('No IMEIs registered yet', style: Theme.of(context).textTheme.titleMedium),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: _items.length,
                           itemBuilder: (context, index) {
                             final item = _items[index];
-                            final itemId = item['id'] is int ? item['id'] as int : int.tryParse(item['id']?.toString() ?? '');
+                            final itemId = (item['id'] as num?)?.toInt();
+                            if (itemId == null) return const SizedBox.shrink();
+
                             final model = item['model']?.toString() ?? '–';
-                            final category = item['category']?.toString() ?? '–';
+                            final category = item['category_name']?.toString() ?? item['category']?.toString() ?? '–';
+                            final product = item['product_name']?.toString() ?? '–';
                             final imei = item['imei_number']?.toString() ?? '–';
+                            final status = item['status']?.toString() ?? 'available';
+                            final isAvailable = status == 'available';
+                            final expanded = _expanded.contains(itemId);
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(12),
                               decoration: sectionCardDecoration(context),
-                              child: Row(
+                              child: Column(
                                 children: [
-                                  Container(
-                                    width: 4,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.primary,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '$model · $category',
-                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        SelectableText(
-                                          imei,
-                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                                fontFamily: 'monospace',
-                                                letterSpacing: 0.7,
+                                  InkWell(
+                                    onTap: () => _toggleExpand(itemId),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Row(
+                                        children: [
+                                          Icon(expanded ? Icons.expand_more : Icons.chevron_right, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(model, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                                                const SizedBox(height: 4),
+                                                SelectableText(
+                                                  imei,
+                                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontFamily: 'monospace', letterSpacing: 0.5),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text('$product / $category', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                              ],
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: isAvailable ? const Color(0xFFD1FAE5) : const Color(0xFFE5E7EB),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              isAvailable ? 'Available' : 'Sold',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: isAvailable ? const Color(0xFF065F46) : const Color(0xFF374151),
                                               ),
-                                        ),
-                                      ],
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.copy_rounded, size: 18),
+                                            tooltip: 'Copy IMEI',
+                                            onPressed: () => _copyImei(imei),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline, size: 20),
+                                            onPressed: () => _deleteItem(itemId),
+                                            tooltip: 'Delete IMEI',
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  FilledButton.tonalIcon(
-                                    onPressed: () => _copyToClipboard(imei, 'IMEI'),
-                                    icon: const Icon(Icons.copy_rounded, size: 16),
-                                    label: const Text('Copy'),
-                                    style: FilledButton.styleFrom(
-                                      visualDensity: VisualDensity.compact,
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    ),
-                                  ),
-                                  if (itemId != null)
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, size: 20),
-                                      onPressed: () => _deleteItem(itemId),
-                                      tooltip: 'Delete IMEI',
+                                  if (expanded)
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                                      child: _trackLoading.contains(itemId)
+                                          ? const Padding(
+                                              padding: EdgeInsets.all(16),
+                                              child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                                            )
+                                          : ImeiTrackPanel(detail: _trackCache[itemId] ?? item),
                                     ),
                                 ],
                               ),

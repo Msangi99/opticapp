@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../api/agent_transfer_api.dart';
-import '../../api/client.dart';
 import '../admin/widgets/admin_page_ui.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
@@ -25,7 +24,6 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
   List<Map<String, dynamic>> _list = [];
   bool _loading = true;
   String? _error;
-  int? _myUserId;
 
   @override
   void initState() {
@@ -39,9 +37,6 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
       _error = null;
     });
     try {
-      final u = await getStoredUser();
-      final sid = u?['id'];
-      _myUserId = sid is int ? sid : (sid is num ? sid.toInt() : null);
       final list = await listAgentTransfers();
       if (!mounted) return;
       setState(() {
@@ -83,6 +78,69 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
     }
   }
 
+  Future<void> _tryAccept(Map<String, dynamic> row) async {
+    final id = row['id'];
+    final int? tid = id is int ? id : (id is num ? id.toInt() : null);
+    if (tid == null) return;
+    final from = row['from_agent'] as Map<String, dynamic>?;
+    final fn = from?['name'] as String? ?? 'the sender';
+    final cnt = row['items_count'] as int? ?? (row['items_count'] is num ? (row['items_count'] as num).toInt() : 0);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Accept transfer?'),
+        content: Text('Accept $cnt device(s) from $fn? They will be assigned to you.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Accept')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await acceptAgentTransfer(tid);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transfer accepted.')));
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _tryDecline(Map<String, dynamic> row) async {
+    final id = row['id'];
+    final int? tid = id is int ? id : (id is num ? id.toInt() : null);
+    if (tid == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Decline transfer?'),
+        content: const Text('The sender will be notified that you declined this request.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Decline'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await declineAgentTransfer(tid);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transfer declined.')));
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  bool _boolFlag(dynamic v) => v == true || v == 1 || v == '1' || v == 'true';
+
   @override
   Widget build(BuildContext context) {
     return AgentScaffold(
@@ -111,9 +169,10 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
                             final tn = to?['name'] as String? ?? '—';
                             final cnt = t['items_count'] as int? ?? (t['items_count'] is num ? (t['items_count'] as num).toInt() : 0);
                             final created = t['created_at'] as String? ?? '';
-                            final fromId = from?['id'];
-                            final int? fid = fromId is int ? fromId : (fromId is num ? fromId.toInt() : null);
-                            final canCancel = status == 'pending' && _myUserId != null && fid == _myUserId;
+                            final direction = t['direction'] as String? ?? '';
+                            final canAccept = _boolFlag(t['can_accept']);
+                            final canDecline = _boolFlag(t['can_decline']);
+                            final canCancel = _boolFlag(t['can_cancel']);
                             return InkWell(
                               onTap: () => Navigator.pushNamed(context, '/agent/transfers/detail', arguments: {'id': t['id']}),
                               child: Container(
@@ -134,24 +193,52 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
                                       _statusChip(status),
                                     ],
                                   ),
+                                  if (direction.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        direction == 'incoming' ? 'Incoming request' : 'Outgoing request',
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          color: direction == 'incoming' ? Colors.blue.shade700 : Theme.of(context).colorScheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
                                   const SizedBox(height: 6),
                                   Text('$cnt device(s) · ${_fmtDate(created)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                                   if ((t['message'] as String?)?.isNotEmpty == true)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8),
-                                      child: Text('Note: ${t['message']}', style: Theme.of(context).textTheme.bodySmall),
+                                      child: Text('Sender note: ${t['message']}', style: Theme.of(context).textTheme.bodySmall),
                                     ),
                                   if ((t['admin_note'] as String?)?.isNotEmpty == true)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4),
-                                      child: Text('Admin: ${t['admin_note']}', style: Theme.of(context).textTheme.bodySmall),
+                                      child: Text('Response note: ${t['admin_note']}', style: Theme.of(context).textTheme.bodySmall),
                                     ),
-                                  if (canCancel)
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: TextButton(
-                                        onPressed: () => _tryCancel(t),
-                                        child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                                  if (canAccept || canDecline || canCancel)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Wrap(
+                                        spacing: 8,
+                                        children: [
+                                          if (canAccept)
+                                            FilledButton(
+                                              onPressed: () => _tryAccept(t),
+                                              child: const Text('Accept'),
+                                            ),
+                                          if (canDecline)
+                                            OutlinedButton(
+                                              onPressed: () => _tryDecline(t),
+                                              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                                              child: const Text('Decline'),
+                                            ),
+                                          if (canCancel)
+                                            TextButton(
+                                              onPressed: () => _tryCancel(t),
+                                              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                 ],

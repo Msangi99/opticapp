@@ -97,6 +97,15 @@ class _PurchaseInfoScreenState extends State<PurchaseInfoScreen> {
       actions: id != null
           ? [
               IconButton(
+                icon: const Icon(Icons.qr_code_2),
+                tooltip: 'View IMEIs',
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  '/admin/stocks/purchase',
+                  arguments: {'id': id, 'name': title},
+                ),
+              ),
+              IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () async {
                   final ok = await Navigator.pushNamed(context, '/admin/purchases/form', arguments: {'id': id});
@@ -184,6 +193,18 @@ class _PurchaseInfoScreenState extends State<PurchaseInfoScreen> {
                               _infoRow(context, 'Available', available),
                               _infoRow(context, 'Stock Status', availableStatus),
                               _infoRow(context, 'Created At', createdAt),
+                              if (id != null) ...[
+                                const SizedBox(height: 12),
+                                FilledButton.icon(
+                                  onPressed: () => Navigator.pushNamed(
+                                    context,
+                                    '/admin/stocks/purchase',
+                                    arguments: {'id': id, 'name': title},
+                                  ),
+                                  icon: const Icon(Icons.qr_code_2, size: 20),
+                                  label: const Text('View IMEIs in stock'),
+                                ),
+                              ],
                             ],
                           ),
                         ),

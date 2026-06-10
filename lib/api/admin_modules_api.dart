@@ -31,7 +31,24 @@ Future<Map<String, dynamic>> getImeiItem(int id) async {
   final res = await apiGet('/admin/imei-items/$id');
   final data = _jsonMap(res);
   if (res.statusCode != 200) throw Exception(data['message']?.toString() ?? 'Not found');
-  return data['data'] as Map<String, dynamic>;
+  return data['data'] as Map<String, dynamic>? ?? {};
+}
+
+/// All IMEI devices registered in one stock bucket.
+Future<Map<String, dynamic>> getStockItems(int stockId) async {
+  final res = await apiGet('/admin/stocks/$stockId/items');
+  final data = _jsonMap(res);
+  if (res.statusCode != 200) {
+    throw Exception(data['message']?.toString() ?? 'Failed to load IMEIs');
+  }
+  final list = data['data'];
+  final stock = data['stock'];
+  return {
+    'items': list is List
+        ? list.map((e) => e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map)).toList()
+        : <Map<String, dynamic>>[],
+    'stock_name': stock is Map ? stock['name']?.toString() : null,
+  };
 }
 
 // Passthrough
