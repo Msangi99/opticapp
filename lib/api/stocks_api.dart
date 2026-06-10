@@ -77,3 +77,15 @@ Future<Map<String, dynamic>> getStockDetail(int id) async {
   if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Failed');
   return data?['data'] as Map<String, dynamic>? ?? {};
 }
+
+Future<Map<String, dynamic>> getStockItems(int stockId) async {
+  final res = await apiGet('/admin/stocks/$stockId/items');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Failed to load IMEIs');
+  final list = data?['data'];
+  final stock = data?['stock'] as Map<String, dynamic>?;
+  return {
+    'items': list is List ? list.cast<Map<String, dynamic>>() : <Map<String, dynamic>>[],
+    'stock_name': stock?['name'],
+  };
+}

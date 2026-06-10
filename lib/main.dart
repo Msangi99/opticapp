@@ -11,6 +11,7 @@ import 'screens/admin/purchase_form_screen.dart';
 import 'screens/admin/distribution_form_screen.dart';
 import 'screens/admin/purchase_receipts_screen.dart';
 import 'screens/admin/stock_detail_screen.dart';
+import 'screens/admin/stock_imei_screen.dart';
 import 'screens/admin/regions_screen.dart';
 import 'screens/admin/add_product_screen.dart';
 import 'screens/admin/expenses_screen.dart';
@@ -120,6 +121,7 @@ class OpticApp extends StatelessWidget {
         '/admin/purchases/info': (context) => const PurchaseInfoScreen(),
         '/admin/stocks/purchase': (context) => const PurchaseDetailScreen(),
         '/admin/stocks/detail': (context) => const StockDetailScreen(),
+        '/admin/stocks/imei': (context) => const StockImeiScreen(),
         '/admin/add-product': (context) => const AddProductScreen(),
         '/admin/expenses': (context) => const ExpensesScreen(),
         '/admin/channels': (context) => const ChannelsScreen(),

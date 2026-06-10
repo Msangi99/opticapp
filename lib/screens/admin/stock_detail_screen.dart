@@ -72,6 +72,15 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
       actions: stockId != null
           ? [
               IconButton(
+                icon: const Icon(Icons.qr_code_2),
+                tooltip: 'View IMEIs',
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  '/admin/stocks/imei',
+                  arguments: {'id': stockId, 'name': name},
+                ),
+              ),
+              IconButton(
                 icon: const Icon(Icons.receipt_long),
                 tooltip: 'Receipts',
                 onPressed: () => Navigator.pushNamed(context, '/admin/stock-receipts', arguments: {'stock_id': stockId}),
@@ -95,6 +104,18 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
                             children: [
                               Text('Quantity: ${_data?['quantity'] ?? 0}', style: Theme.of(context).textTheme.titleMedium),
                               Text('Limit: ${_data?['stock_limit'] ?? 0}'),
+                              if (stockId != null) ...[
+                                const SizedBox(height: 12),
+                                FilledButton.icon(
+                                  onPressed: () => Navigator.pushNamed(
+                                    context,
+                                    '/admin/stocks/imei',
+                                    arguments: {'id': stockId, 'name': name},
+                                  ),
+                                  icon: const Icon(Icons.qr_code_2, size: 20),
+                                  label: const Text('View IMEIs in stock'),
+                                ),
+                              ],
                             ],
                           ),
                         ),
