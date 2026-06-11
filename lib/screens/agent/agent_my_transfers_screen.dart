@@ -146,6 +146,13 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
     return AgentScaffold(
       title: 'Transfer requests',
       showDrawer: true,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.pushNamed(context, '/agent/transfer'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New transfer'),
+        backgroundColor: const Color(0xFF232F3E),
+        foregroundColor: Colors.white,
+      ),
       body: _loading
           ? const AdminPageLoading()
           : _error != null
@@ -153,12 +160,18 @@ class _AgentMyTransfersScreenState extends State<AgentMyTransfersScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: _list.isEmpty
-                      ? const AdminPageEmpty(
-                          icon: Icons.swap_horiz_rounded,
-                          title: 'No transfer requests yet.',
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+                          children: const [
+                            AdminPageEmpty(
+                              icon: Icons.swap_horiz_rounded,
+                              title: 'No transfer requests yet.',
+                            ),
+                          ],
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
                           itemCount: _list.length,
                           itemBuilder: (context, index) {
                             final t = _list[index];

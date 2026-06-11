@@ -98,7 +98,8 @@ class _DistributionInfoScreenState extends State<DistributionInfoScreen> {
     final args = _args(context);
     final id = _asInt(args['id']);
     final data = _details.isNotEmpty ? _details : args;
-    final title = 'Distribution #${_label(data['id'], fallback: '')}';
+    final invoiceNumber = _label(data['invoice_number']);
+    final title = invoiceNumber != '—' ? 'Distribution $invoiceNumber' : 'Distribution #${_label(data['id'], fallback: '')}';
     final dealer = _label(data['dealer_name']);
     final seller = _label(data['seller_name']);
     final product = _label(data['product_name']);
@@ -209,6 +210,7 @@ class _DistributionInfoScreenState extends State<DistributionInfoScreen> {
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                               ),
                               const SizedBox(height: 12),
+                              _infoRow(context, 'Invoice', invoiceNumber),
                               _infoRow(context, 'Date', date),
                               _infoRow(context, 'Dealer', dealer),
                               _infoRow(context, 'Seller', seller),

@@ -124,7 +124,7 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
     final theme = Theme.of(context);
 
     return AgentScaffold(
-      title: 'Credit',
+      title: 'Credit sales',
       showDrawer: true,
       body: _loading
           ? const AdminPageLoading()

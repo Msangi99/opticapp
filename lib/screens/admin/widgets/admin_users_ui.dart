@@ -380,6 +380,7 @@ class AdminUserListTile extends StatelessWidget {
                   children: [
                     if (showRole) UserRolePill(role: role),
                     UserStatusPill(status: status),
+                    ..._locationChips(user),
                     Text('Joined $joined', style: TextStyle(fontSize: 12, color: kAdminTextMuted)),
                   ],
                 ),
@@ -387,6 +388,42 @@ class AdminUserListTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+List<Widget> _locationChips(Map<String, dynamic> user) {
+  final region = user['region_name'] as String?;
+  final branch = user['branch_name'] as String?;
+  final chips = <Widget>[];
+  if (region != null && region.isNotEmpty) {
+    chips.add(_LocationChip(label: 'Region', value: region));
+  }
+  if (branch != null && branch.isNotEmpty) {
+    chips.add(_LocationChip(label: 'Branch', value: branch));
+  }
+  return chips;
+}
+
+class _LocationChip extends StatelessWidget {
+  const _LocationChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
       ),
     );
   }

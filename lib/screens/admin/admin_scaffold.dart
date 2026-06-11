@@ -218,6 +218,7 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                       PortalNavItem(icon: Icons.local_shipping_rounded, label: 'Distribution Sales', route: '/admin/stock/distribution'),
                       PortalNavItem(icon: Icons.person_pin_circle_rounded, label: 'Agent Cash Sales', route: '/admin/stock/agent-sales'),
                       PortalNavItem(icon: Icons.credit_card_rounded, label: 'Agent Credit Sales', route: '/admin/agent-credits'),
+                      PortalNavItem(icon: Icons.swap_horiz_rounded, label: 'Agent transfers', route: '/admin/stock/agent-transfers'),
                       PortalNavItem(icon: Icons.alt_route_rounded, label: 'Branch transfer', route: '/admin/stock/branch-transfer'),
                     ],
                     onNavigate: navigate,

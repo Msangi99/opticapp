@@ -60,7 +60,7 @@ class _AgentSalesHistoryScreenState extends State<AgentSalesHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return AgentScaffold(
-      title: 'Sales history',
+      title: 'Cash sales',
       body: _loading
           ? const AdminPageLoading()
           : _error != null
@@ -68,7 +68,7 @@ class _AgentSalesHistoryScreenState extends State<AgentSalesHistoryScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: _list.isEmpty
-                      ? const AdminPageEmpty(icon: Icons.receipt_long_outlined, title: 'No sales history')
+                      ? const AdminPageEmpty(icon: Icons.receipt_long_outlined, title: 'No cash sales')
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: _list.length,

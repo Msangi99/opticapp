@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../api/users_api.dart';
-import '../../theme/app_theme.dart';
 import 'admin_scaffold.dart';
 import 'admin_user_detail_screen.dart';
 import 'widgets/admin_page_ui.dart';
+import 'widgets/admin_users_ui.dart';
 
 class TeamLeadersScreen extends StatefulWidget {
   const TeamLeadersScreen({super.key});
@@ -62,7 +62,9 @@ class _TeamLeadersScreenState extends State<TeamLeadersScreen> {
                 itemBuilder: (_, i) {
                   final u = _list[i];
                   final id = (u['id'] as num?)?.toInt();
-                  return InkWell(
+                  return AdminUserListTile(
+                    user: u,
+                    showRole: false,
                     onTap: id == null
                         ? null
                         : () => Navigator.push(
@@ -71,12 +73,6 @@ class _TeamLeadersScreenState extends State<TeamLeadersScreen> {
                                 builder: (_) => AdminUserDetailScreen(userId: id, role: 'teamleader'),
                               ),
                             ),
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: sectionCardDecoration(context),
-                      child: Text('${u['name']} · ${u['email']}'),
-                    ),
                   );
                 },
               ),

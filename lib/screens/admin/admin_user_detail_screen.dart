@@ -147,6 +147,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                           if (u['phone'] != null) KeyValueRow(label: 'Phone', value: u['phone'].toString()),
                           if (u['business_name'] != null) KeyValueRow(label: 'Business', value: u['business_name'].toString()),
                           if (u['branch_name'] != null) KeyValueRow(label: 'Branch', value: u['branch_name'].toString()),
+                          if (u['region_name'] != null) KeyValueRow(label: 'Region', value: u['region_name'].toString()),
                           if (u['team_leader_name'] != null) KeyValueRow(label: 'Team leader', value: u['team_leader_name'].toString()),
                           if (u['regional_manager_name'] != null) KeyValueRow(label: 'Regional manager', value: u['regional_manager_name'].toString()),
                           if (u['subadmin_role_name'] != null) KeyValueRow(label: 'Role', value: u['subadmin_role_name'].toString()),

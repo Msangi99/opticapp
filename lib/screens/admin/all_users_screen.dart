@@ -115,7 +115,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.person_outline),
-                title: const Text('View details'),
+                title: const Text('View'),
                 onTap: () {
                   Navigator.pop(ctx);
                   _openUser(user);
@@ -124,7 +124,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
               if (role == 'regional_manager' && isActive)
                 ListTile(
                   leading: const Icon(Icons.inventory_2_outlined),
-                  title: const Text('Assign devices'),
+                  title: const Text('Assign device'),
                   onTap: () {
                     Navigator.pop(ctx);
                     Navigator.push(
@@ -141,7 +141,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
                 ),
               ListTile(
                 leading: const Icon(Icons.lock_reset),
-                title: const Text('Reset password'),
+                title: const Text('Reset Password'),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showResetPassword(id);

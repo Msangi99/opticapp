@@ -106,6 +106,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
         itemBuilder: (context, index) {
           final s = _list[index];
           final dealerName = s['dealer_name'] as String? ?? '–';
+          final invoiceNumber = s['invoice_number'] as String? ?? '–';
           final productName = s['product_name'] as String? ?? '–';
           final total = (s['total_selling_value'] as num?)?.toDouble() ?? 0.0;
           final profit = (s['profit'] as num?)?.toDouble() ?? 0.0;
@@ -138,6 +139,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
+                    Text('Invoice: $invoiceNumber', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'monospace')),
                     Text(productName, style: TextStyle(color: kAdminTextMuted, fontSize: 13)),
                     Text('${formatTzs(total)} · profit ${formatTzs(profit)}', style: TextStyle(color: kAdminTextMuted, fontSize: 12)),
                   ],
