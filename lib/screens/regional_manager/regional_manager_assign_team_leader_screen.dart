@@ -177,7 +177,7 @@ class _RegionalManagerAssignTeamLeaderScreenState extends State<RegionalManagerA
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Give devices you received from admin to a team leader in your region.',
+                    'Send devices in your custody to a team leader as a transfer request. They must accept before devices appear in their inventory.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -288,7 +288,7 @@ class _RegionalManagerAssignTeamLeaderScreenState extends State<RegionalManagerA
                             width: 22,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('Assign to team leader'),
+                        : const Text('Send transfer request'),
                   ),
                 ],
               ),

@@ -136,6 +136,11 @@ class _TeamLeaderDrawer extends StatelessWidget {
                       route: '/team-leader/imei-register',
                     ),
                     PortalNavItem(
+                      icon: Icons.swap_horiz_rounded,
+                      label: 'Transfer requests',
+                      route: '/team-leader/transfers',
+                    ),
+                    PortalNavItem(
                       icon: Icons.person_add_alt_1_rounded,
                       label: 'Assign to agent',
                       route: '/team-leader/assign-agent',

@@ -136,6 +136,11 @@ class _RegionalManagerDrawer extends StatelessWidget {
                       route: '/regional-manager/imei-register',
                     ),
                     PortalNavItem(
+                      icon: Icons.swap_horiz_rounded,
+                      label: 'Transfer requests',
+                      route: '/regional-manager/transfers',
+                    ),
+                    PortalNavItem(
                       icon: Icons.group_add_rounded,
                       label: 'Assign to team leader',
                       route: '/regional-manager/assign-team-leader',

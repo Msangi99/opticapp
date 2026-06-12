@@ -143,6 +143,7 @@ class _AgentDrawer extends StatelessWidget {
                   title: 'Transfers',
                   primary: primary,
                   items: const [
+                    PortalNavItem(icon: Icons.inbox_rounded, label: 'Transfer requests', route: '/agent/transfers'),
                     PortalNavItem(icon: Icons.undo_rounded, label: 'Return devices', route: '/agent/return-devices'),
                   ],
                   onNavigate: navigate,

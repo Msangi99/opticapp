@@ -30,7 +30,6 @@ import 'screens/admin/settings_screen.dart';
 import 'screens/agent/agent_dashboard_screen.dart';
 import 'screens/agent/sell_screen.dart';
 import 'screens/agent/agent_credits_screen.dart';
-import 'screens/agent/agent_transfer_screen.dart';
 import 'screens/agent/agent_my_transfers_screen.dart';
 import 'screens/agent/agent_transfer_detail_screen.dart';
 import 'screens/agent/agent_credit_detail_screen.dart';
@@ -46,11 +45,15 @@ import 'screens/regional_manager/regional_manager_dashboard_screen.dart';
 import 'screens/regional_manager/regional_manager_imei_register_screen.dart';
 import 'screens/regional_manager/regional_manager_profile_screen.dart';
 import 'screens/regional_manager/regional_manager_return_devices_screen.dart';
+import 'screens/regional_manager/regional_manager_my_transfers_screen.dart';
+import 'screens/regional_manager/regional_manager_transfer_detail_screen.dart';
 import 'screens/team_leader/team_leader_assign_agent_screen.dart';
 import 'screens/team_leader/team_leader_dashboard_screen.dart';
 import 'screens/team_leader/team_leader_imei_register_screen.dart';
 import 'screens/team_leader/team_leader_profile_screen.dart';
 import 'screens/team_leader/team_leader_return_devices_screen.dart';
+import 'screens/team_leader/team_leader_my_transfers_screen.dart';
+import 'screens/team_leader/team_leader_transfer_detail_screen.dart';
 import 'screens/admin/admin_more_screens.dart';
 import 'screens/admin/product_detail_screen.dart';
 import 'screens/admin/passthrough_detail_screen.dart';
@@ -196,7 +199,6 @@ class OpticApp extends StatelessWidget {
         '/agent/dashboard': (context) => const AgentDashboardScreen(),
         '/agent/sell': (context) => const SellScreen(),
         '/agent/credits': (context) => const AgentCreditsScreen(),
-        '/agent/transfer': (context) => const AgentTransferScreen(),
         '/agent/return-devices': (context) => const AgentReturnDevicesScreen(),
         '/agent/transfers': (context) => const AgentMyTransfersScreen(),
         '/agent/transfers/detail': (context) => const AgentTransferDetailScreen(),
@@ -208,11 +210,15 @@ class OpticApp extends StatelessWidget {
         '/agent/profile': (context) => const AgentProfileScreen(),
         '/regional-manager/dashboard': (context) => const RegionalManagerDashboardScreen(),
         '/regional-manager/imei-register': (context) => const RegionalManagerImeiRegisterScreen(),
+        '/regional-manager/transfers': (context) => const RegionalManagerMyTransfersScreen(),
+        '/regional-manager/transfers/detail': (context) => const RegionalManagerTransferDetailScreen(),
         '/regional-manager/assign-team-leader': (context) => const RegionalManagerAssignTeamLeaderScreen(),
         '/regional-manager/return-devices': (context) => const RegionalManagerReturnDevicesScreen(),
         '/regional-manager/profile': (context) => const RegionalManagerProfileScreen(),
         '/team-leader/dashboard': (context) => const TeamLeaderDashboardScreen(),
         '/team-leader/imei-register': (context) => const TeamLeaderImeiRegisterScreen(),
+        '/team-leader/transfers': (context) => const TeamLeaderMyTransfersScreen(),
+        '/team-leader/transfers/detail': (context) => const TeamLeaderTransferDetailScreen(),
         '/team-leader/assign-agent': (context) => const TeamLeaderAssignAgentScreen(),
         '/team-leader/return-devices': (context) => const TeamLeaderReturnDevicesScreen(),
         '/team-leader/profile': (context) => const TeamLeaderProfileScreen(),
