@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../api/client.dart';
+import '../../services/push_notification_service.dart';
+import '../../widgets/notification_bell.dart';
 import '../../widgets/portal_drawer.dart';
 
 const Color _kBrandDark = Color(0xFF232F3E);
@@ -65,7 +67,10 @@ class _TeamLeaderScaffoldState extends State<TeamLeaderScaffold> {
               ),
         ),
         leading: leading,
-        actions: widget.actions,
+        actions: [
+          if (widget.showDrawer) const NotificationBell(),
+          ...?widget.actions,
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Divider(
@@ -150,6 +155,11 @@ class _TeamLeaderDrawer extends StatelessWidget {
                       label: 'Return to regional manager',
                       route: '/team-leader/return-devices',
                     ),
+                    PortalNavItem(
+                      icon: Icons.assignment_return_rounded,
+                      label: 'Return requests',
+                      route: '/team-leader/return-requests',
+                    ),
                   ],
                   onNavigate: navigate,
                 ),
@@ -175,6 +185,7 @@ class _TeamLeaderDrawer extends StatelessWidget {
             onProfile: () {},
             onLogout: () async {
               Navigator.pop(context);
+              await PushNotificationService.unregisterFromBackend();
               await clearStoredAuth();
               if (!context.mounted) return;
               Navigator.pushReplacementNamed(context, '/login');

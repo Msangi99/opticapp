@@ -83,7 +83,7 @@ class _RegionalManagerReturnDevicesScreenState extends State<RegionalManagerRetu
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Returned $count device(s) to admin.')),
+        SnackBar(content: Text('Return request sent ($count device(s)). Admin must accept.')),
       );
       setState(() {
         _selectedIds.clear();
@@ -125,7 +125,7 @@ class _RegionalManagerReturnDevicesScreenState extends State<RegionalManagerRetu
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Send devices back to admin stock. Devices still with team leaders or agents must be returned to you first.',
+                    'Send devices back to admin stock as a return request. Admin must accept before devices leave your custody.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),

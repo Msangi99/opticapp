@@ -23,6 +23,7 @@ Future<Map<String, dynamic>> login(String email, String password) async {
   await setStoredToken(token);
   await setStoredUser(user);
   await _applyTenantApiBaseUrlIfNeeded(user);
+  await PushNotificationService.syncTokenWithBackend();
   return user;
 }
 

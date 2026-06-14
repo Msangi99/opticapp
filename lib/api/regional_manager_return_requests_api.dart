@@ -1,0 +1,52 @@
+import 'dart:convert';
+import 'client.dart';
+
+Future<List<Map<String, dynamic>>> listRegionalManagerReturnRequestsIncoming() async {
+  final res = await apiGet('/regional-manager/return-requests/incoming?per_page=50');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load return requests');
+  }
+  final list = data?['data'];
+  if (list == null || list is! List) return [];
+  return list.map((e) => e as Map<String, dynamic>).toList();
+}
+
+Future<List<Map<String, dynamic>>> listRegionalManagerReturnRequestsOutgoing() async {
+  final res = await apiGet('/regional-manager/return-requests/outgoing?per_page=50');
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Failed to load return requests');
+  }
+  final list = data?['data'];
+  if (list == null || list is! List) return [];
+  return list.map((e) => e as Map<String, dynamic>).toList();
+}
+
+Future<void> acceptRegionalManagerReturnIncoming(int returnId, {String? note}) async {
+  final body = <String, dynamic>{};
+  if (note != null && note.trim().isNotEmpty) body['note'] = note.trim();
+  final res = await apiPost('/regional-manager/return-requests/incoming/$returnId/accept', body);
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Accept failed');
+  }
+}
+
+Future<void> declineRegionalManagerReturnIncoming(int returnId, {String? note}) async {
+  final body = <String, dynamic>{};
+  if (note != null && note.trim().isNotEmpty) body['note'] = note.trim();
+  final res = await apiPost('/regional-manager/return-requests/incoming/$returnId/decline', body);
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Decline failed');
+  }
+}
+
+Future<void> cancelRegionalManagerReturnOutgoing(int returnId) async {
+  final res = await apiPost('/regional-manager/return-requests/outgoing/$returnId/cancel', {});
+  final data = jsonDecode(res.body) as Map<String, dynamic>?;
+  if (res.statusCode != 200) {
+    throw Exception(data?['message']?.toString() ?? 'Cancel failed');
+  }
+}

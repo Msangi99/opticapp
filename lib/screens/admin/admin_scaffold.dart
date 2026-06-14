@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/client.dart';
 import '../../api/users_api.dart';
+import '../../services/push_notification_service.dart';
+import '../../widgets/notification_bell.dart';
 import '../../widgets/portal_drawer.dart';
 
 const Color _kBrandDark = Color(0xFF232F3E);
@@ -73,16 +75,7 @@ class _AdminScaffoldState extends State<AdminScaffold> {
         ),
         leading: leading,
         actions: [
-          if (widget.showDrawer)
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              tooltip: 'Notifications',
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Notifications coming soon.')),
-                );
-              },
-            ),
+          if (widget.showDrawer) const NotificationBell(),
           ...?widget.actions,
         ],
         bottom: PreferredSize(
@@ -219,6 +212,7 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                       PortalNavItem(icon: Icons.person_pin_circle_rounded, label: 'Agent Cash Sales', route: '/admin/stock/agent-sales'),
                       PortalNavItem(icon: Icons.credit_card_rounded, label: 'Agent Credit Sales', route: '/admin/agent-credits'),
                       PortalNavItem(icon: Icons.swap_horiz_rounded, label: 'Agent transfers', route: '/admin/stock/agent-transfers'),
+                      PortalNavItem(icon: Icons.assignment_return_rounded, label: 'Device returns', route: '/admin/stock/device-returns'),
                       PortalNavItem(icon: Icons.alt_route_rounded, label: 'Branch transfer', route: '/admin/stock/branch-transfer'),
                     ],
                     onNavigate: navigate,
@@ -255,6 +249,7 @@ class _AdminDrawerState extends State<_AdminDrawer> {
 
   Future<void> _logout() async {
     Navigator.pop(context);
+    await PushNotificationService.unregisterFromBackend();
     await clearStoredAuth();
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, '/login');

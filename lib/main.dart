@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'api/client.dart';
 import 'theme/app_theme.dart';
+import 'providers/notifications_provider.dart';
+import 'services/push_notification_service.dart';
+import 'screens/common/notifications_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/stocks_screen.dart';
@@ -38,13 +42,16 @@ import 'screens/agent/agent_sale_detail_screen.dart';
 import 'screens/agent/agent_leads_screen.dart';
 import 'screens/agent/agent_lead_detail_screen.dart';
 import 'screens/agent/agent_return_devices_screen.dart';
+import 'screens/agent/agent_return_requests_screen.dart';
 import 'screens/admin/admin_agent_transfers_screen.dart';
+import 'screens/admin/admin_device_returns_screen.dart';
 import 'screens/admin/admin_branch_transfer_screen.dart';
 import 'screens/regional_manager/regional_manager_assign_team_leader_screen.dart';
 import 'screens/regional_manager/regional_manager_dashboard_screen.dart';
 import 'screens/regional_manager/regional_manager_imei_register_screen.dart';
 import 'screens/regional_manager/regional_manager_profile_screen.dart';
 import 'screens/regional_manager/regional_manager_return_devices_screen.dart';
+import 'screens/regional_manager/regional_manager_return_requests_screen.dart';
 import 'screens/regional_manager/regional_manager_my_transfers_screen.dart';
 import 'screens/regional_manager/regional_manager_transfer_detail_screen.dart';
 import 'screens/team_leader/team_leader_assign_agent_screen.dart';
@@ -52,6 +59,7 @@ import 'screens/team_leader/team_leader_dashboard_screen.dart';
 import 'screens/team_leader/team_leader_imei_register_screen.dart';
 import 'screens/team_leader/team_leader_profile_screen.dart';
 import 'screens/team_leader/team_leader_return_devices_screen.dart';
+import 'screens/team_leader/team_leader_return_requests_screen.dart';
 import 'screens/team_leader/team_leader_my_transfers_screen.dart';
 import 'screens/team_leader/team_leader_transfer_detail_screen.dart';
 import 'screens/admin/admin_more_screens.dart';
@@ -91,7 +99,9 @@ import 'screens/guest/email_verification_screen.dart';
 import 'screens/guest/db_setup_screen.dart';
 import 'screens/agent/agent_profile_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PushNotificationService.init();
   runApp(const OpticApp());
 }
 
@@ -100,11 +110,19 @@ class OpticApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return ChangeNotifierProvider(
+      create: (_) {
+        final provider = NotificationsProvider();
+        PushNotificationService.bindProvider(provider);
+        return provider;
+      },
+      child: MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'Optic',
       theme: appThemeLight,
       debugShowCheckedModeBanner: false,
       routes: {
+        '/notifications': (context) => const NotificationsScreen(),
         '/login': (context) => const LoginScreen(),
         '/admin/dashboard': (context) => const AdminDashboardScreen(),
         '/admin/stocks': (context) => const StocksScreen(pageTitle: 'Stocks'),
@@ -145,6 +163,7 @@ class OpticApp extends StatelessWidget {
         '/admin/stock/distribution/info': (context) => const DistributionInfoScreen(),
         '/admin/stock/pending-sales': (context) => const PendingSalesScreen(),
         '/admin/stock/agent-transfers': (context) => const AdminAgentTransfersScreen(),
+        '/admin/stock/device-returns': (context) => const AdminDeviceReturnsScreen(),
         '/admin/assign-agent-products': (context) => const AdminAssignAgentProductsScreen(),
         '/admin/stock/branch-transfer': (context) => const AdminBranchTransferScreen(),
         '/admin/reports': (context) => const ReportsScreen(),
@@ -200,6 +219,7 @@ class OpticApp extends StatelessWidget {
         '/agent/sell': (context) => const SellScreen(),
         '/agent/credits': (context) => const AgentCreditsScreen(),
         '/agent/return-devices': (context) => const AgentReturnDevicesScreen(),
+        '/agent/return-requests': (context) => const AgentReturnRequestsScreen(),
         '/agent/transfers': (context) => const AgentMyTransfersScreen(),
         '/agent/transfers/detail': (context) => const AgentTransferDetailScreen(),
         '/agent/credits/detail': (context) => const AgentCreditDetailScreen(),
@@ -214,6 +234,7 @@ class OpticApp extends StatelessWidget {
         '/regional-manager/transfers/detail': (context) => const RegionalManagerTransferDetailScreen(),
         '/regional-manager/assign-team-leader': (context) => const RegionalManagerAssignTeamLeaderScreen(),
         '/regional-manager/return-devices': (context) => const RegionalManagerReturnDevicesScreen(),
+        '/regional-manager/return-requests': (context) => const RegionalManagerReturnRequestsScreen(),
         '/regional-manager/profile': (context) => const RegionalManagerProfileScreen(),
         '/team-leader/dashboard': (context) => const TeamLeaderDashboardScreen(),
         '/team-leader/imei-register': (context) => const TeamLeaderImeiRegisterScreen(),
@@ -221,6 +242,7 @@ class OpticApp extends StatelessWidget {
         '/team-leader/transfers/detail': (context) => const TeamLeaderTransferDetailScreen(),
         '/team-leader/assign-agent': (context) => const TeamLeaderAssignAgentScreen(),
         '/team-leader/return-devices': (context) => const TeamLeaderReturnDevicesScreen(),
+        '/team-leader/return-requests': (context) => const TeamLeaderReturnRequestsScreen(),
         '/team-leader/profile': (context) => const TeamLeaderProfileScreen(),
         '/superadmin/dashboard': (context) => const SuperadminDashboardScreen(),
         '/superadmin/tenants': (context) => const SuperadminTenantsScreen(),
@@ -235,6 +257,7 @@ class OpticApp extends StatelessWidget {
         '/home': (context) => const _PlaceholderHome(),
       },
       home: const _AuthChecker(),
+    ),
     );
   }
 }
@@ -269,6 +292,9 @@ class _AuthCheckerState extends State<_AuthChecker> {
     final user = await getStoredUser();
     if (!mounted) return;
     if (token != null && user != null) {
+      await PushNotificationService.syncTokenWithBackend();
+      if (!mounted) return;
+      context.read<NotificationsProvider>().refreshSilently();
       final role = user['role'] as String?;
       if (role == 'admin' || role == 'subadmin') {
         Navigator.pushReplacementNamed(context, '/admin/dashboard');

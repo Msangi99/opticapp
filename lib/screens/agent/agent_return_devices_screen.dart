@@ -82,12 +82,13 @@ class _AgentReturnDevicesScreenState extends State<AgentReturnDevicesScreen> {
 
   Future<void> _submit() async {
     if (_selectedIds.isEmpty) return;
+    if (_productId == null) return;
     setState(() => _submitting = true);
     try {
-      await returnDevicesToTeamLeader(_selectedIds.toList());
+      await returnDevicesToTeamLeader(_productId!, _selectedIds.toList());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Devices returned to team leader.')),
+        const SnackBar(content: Text('Return request sent. Team leader must accept to complete.')),
       );
       setState(() {
         _selectedIds.clear();
@@ -130,7 +131,7 @@ class _AgentReturnDevicesScreenState extends State<AgentReturnDevicesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Return devices to your team leader. They can reassign them to another agent.',
+                    'Submit a return request to your team leader. They must accept before devices leave your custody.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),

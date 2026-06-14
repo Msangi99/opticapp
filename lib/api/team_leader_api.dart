@@ -149,10 +149,10 @@ Future<int> postTeamLeaderReturnDevices({
     'product_list_ids': productListIds,
   });
   final map = jsonDecode(res.body) as Map<String, dynamic>?;
-  if (res.statusCode == 200) {
+  if (res.statusCode == 200 || res.statusCode == 201) {
     final data = map?['data'];
     if (data is Map<String, dynamic>) {
-      final n = data['returned_count'];
+      final n = data['items_count'] ?? data['returned_count'];
       if (n is int) return n;
       if (n is num) return n.toInt();
     }

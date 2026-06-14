@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "245893266699",
+    "project_id": "opticedgeafrica",
+    "storage_bucket": "opticedgeafrica.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:245893266699:android:c9873ce92e7174e671b60e",
+        "android_client_info": {
+          "package_name": "com.optic.opticapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVa_nYdlLTungLW-t1jW8_UvbQdCizg98"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../api/auth_api.dart';
 import '../api/client.dart';
+import '../providers/notifications_provider.dart';
 import '../theme/app_theme.dart';
 
 /// Auth-only accent (mock used blue; app uses yellow here without changing global admin theme).
@@ -65,6 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await login(_signInEmailController.text.trim(), _signInPasswordController.text);
       if (!mounted) return;
+      context.read<NotificationsProvider>().refreshSilently();
       final user = await getStoredUser();
       if (!mounted) return;
       final role = user?['role'] as String?;

@@ -1,4 +1,4 @@
-package com.example.opticapp
+package com.optic.opticapp
 
 import io.flutter.embedding.android.FlutterActivity
 

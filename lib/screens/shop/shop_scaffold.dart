@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../api/client.dart';
+import '../../services/push_notification_service.dart';
+import '../../widgets/notification_bell.dart';
 import '../../widgets/portal_drawer.dart';
 
 const Color kShopBrandDark = Color(0xFF232F3E);
@@ -138,7 +140,10 @@ class _ShopScaffoldState extends State<ShopScaffold> {
                 onPressed: () => Navigator.maybePop(context),
                 tooltip: 'Back',
               ),
-        actions: widget.actions,
+        actions: [
+          if (widget.showDrawer) const NotificationBell(),
+          ...?widget.actions,
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Divider(
@@ -239,6 +244,7 @@ class _ShopScaffoldState extends State<ShopScaffold> {
             onProfile: () {},
             onLogout: () async {
               Navigator.pop(context);
+              await PushNotificationService.unregisterFromBackend();
               await clearStoredAuth();
               if (!context.mounted) return;
               Navigator.pushReplacementNamed(context, '/login');

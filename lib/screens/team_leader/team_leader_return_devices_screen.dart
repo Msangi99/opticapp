@@ -83,7 +83,7 @@ class _TeamLeaderReturnDevicesScreenState extends State<TeamLeaderReturnDevicesS
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Returned $count device(s) to regional manager.')),
+        SnackBar(content: Text('Return request sent ($count device(s)). Regional manager must accept.')),
       );
       setState(() {
         _selectedIds.clear();
@@ -125,7 +125,7 @@ class _TeamLeaderReturnDevicesScreenState extends State<TeamLeaderReturnDevicesS
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Send devices back to your regional manager. Devices still with agents must be returned to you first.',
+                    'Send devices back to your regional manager as a return request. They must accept before devices leave your custody.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),

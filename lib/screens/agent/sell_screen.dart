@@ -39,13 +39,6 @@ class _SellScreenState extends State<SellScreen>
   late TabController _tabController;
   bool _scanning = false;
 
-  // Given tab state (separate from IMEI-assigned Sell/Credit tabs)
-  String? _givenScannedImei;
-  bool _givenScanning = false;
-  bool _givenSubmitting = false;
-  String? _givenError;
-  Map<String, dynamic>? _givenScanInfo;
-
   // Payment channel state
   List<Map<String, dynamic>> _regularChannels = [];
   Map<String, dynamic>? _watuChannel;
@@ -74,7 +67,7 @@ class _SellScreenState extends State<SellScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _priceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
     _loadCategoriesForNeed();
@@ -513,86 +506,6 @@ class _SellScreenState extends State<SellScreen>
     }
   }
 
-  // ----- Given tab handlers -----
-
-  Future<void> _openGivenScanner() async {
-    final image = await ImagePicker().pickImage(source: ImageSource.camera);
-    if (image == null || !mounted) return;
-
-    setState(() {
-      _givenScanning = true;
-      _givenError = null;
-    });
-    try {
-      final barcodes = await _analyzeImageForImei(image.path);
-      if (!mounted) return;
-
-      if (barcodes.isEmpty) {
-        setState(() {
-          _givenScanning = false;
-          _givenError =
-              'No barcode detected in the captured image. Try again.';
-        });
-        return;
-      }
-
-      final code = barcodes.first.trim();
-      final info = await getGivenAssignmentByImei(code);
-      if (!mounted) return;
-      setState(() {
-        _givenScannedImei = code;
-        _givenScanInfo = info;
-        _givenError = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _givenError = 'Error scanning: ${e.toString()}';
-      });
-    } finally {
-      if (mounted) setState(() => _givenScanning = false);
-    }
-  }
-
-  Future<void> _submitGiven() async {
-    final imei = _givenScannedImei?.trim() ?? '';
-    if (imei.isEmpty) {
-      setState(() => _givenError = 'Scan an IMEI first.');
-      return;
-    }
-    if (_givenScanInfo == null) {
-      setState(() => _givenError = 'Could not resolve assignment for this IMEI.');
-      return;
-    }
-
-    setState(() {
-      _givenError = null;
-      _givenSubmitting = true;
-    });
-    try {
-      await sellGiven(imei: imei);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Given sale recorded.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: successColor,
-        ),
-      );
-      setState(() {
-        _givenScannedImei = null;
-        _givenScanInfo = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(
-        () => _givenError = e.toString().replaceFirst('Exception: ', ''),
-      );
-    } finally {
-      if (mounted) setState(() => _givenSubmitting = false);
-    }
-  }
-
   @override
   void dispose() {
     _tabController.dispose();
@@ -654,10 +567,6 @@ class _SellScreenState extends State<SellScreen>
                       ),
                     ],
                   ),
-                ),
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: _buildGivenForm(context, theme),
                 ),
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
@@ -749,12 +658,6 @@ class _SellScreenState extends State<SellScreen>
                   child: _SaleTabChip(
                     icon: Icons.credit_card_rounded,
                     label: 'Credit Sale',
-                  ),
-                ),
-                Tab(
-                  child: _SaleTabChip(
-                    icon: Icons.card_giftcard_outlined,
-                    label: 'Given',
                   ),
                 ),
                 Tab(
@@ -1181,238 +1084,6 @@ class _SellScreenState extends State<SellScreen>
                   )
                 : Text(credit ? 'Complete Watu sale' : 'Complete sale'),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGivenForm(BuildContext context, ThemeData theme) {
-    final scanned = _givenScannedImei != null && _givenScannedImei!.isNotEmpty;
-    final info = _givenScanInfo;
-    final remaining = info == null
-        ? 0
-        : (info['remaining_total'] is num
-              ? (info['remaining_total'] as num).toInt()
-              : int.tryParse(info['remaining_total']?.toString() ?? '') ?? 0);
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: sectionCardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Given sale',
-            style: sectionLabelStyle(context),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Scan any IMEI of a product assigned to you by total. New IMEIs are saved in the system at sale time.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _givenScanning ? null : _openGivenScanner,
-              icon: _givenScanning
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.camera_alt_rounded),
-              label: Text(
-                _givenScanning ? 'Scanning…' : 'Capture & scan IMEI',
-              ),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-              ),
-            ),
-          ),
-          if (scanned) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(
-                  alpha: 0.4,
-                ),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.qr_code_2_rounded,
-                    size: 20,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Scanned IMEI',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _givenScannedImei!,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _givenSubmitting
-                        ? null
-                        : () => setState(() {
-                            _givenScannedImei = null;
-                            _givenScanInfo = null;
-                            _givenError = null;
-                          }),
-                    child: const Text('Clear'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (_givenError != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                _givenError!,
-                style: errorStyle(),
-                maxLines: null,
-              ),
-            ),
-          ],
-          if (scanned) ...[
-            const SizedBox(height: 20),
-            if (info != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                decoration: sectionCardDecoration(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Purchase assigned',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      info['purchase_assigned']?.toString() ?? '—',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Model',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      info['model']?.toString() ?? '—',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Remain total',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      remaining.toString(),
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                vertical: 16,
-                horizontal: 20,
-              ),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(
-                  alpha: 0.5,
-                ),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Remain total',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    remaining.toString(),
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: (!_givenSubmitting && scanned && info != null)
-                  ? _submitGiven
-                  : null,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
-              child: _givenSubmitting
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Complete Assigned sale'),
-            ),
-          ],
         ],
       ),
     );
