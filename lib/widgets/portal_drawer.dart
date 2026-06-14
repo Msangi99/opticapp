@@ -581,6 +581,7 @@ class _PortalDrawerCollapsibleSectionState extends State<PortalDrawerCollapsible
                                   label: widget.items[i].label,
                                   primary: widget.primary,
                                   route: widget.items[i].route,
+                                  badgeCount: widget.items[i].badgeCount,
                                   compact: true,
                                   onTap: () => widget.onNavigate(widget.items[i].route),
                                 ),

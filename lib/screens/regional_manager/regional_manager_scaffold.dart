@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../api/client.dart';
+import '../../providers/pending_request_counts_provider.dart';
 import '../../services/push_notification_service.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal_drawer.dart';
+import '../../widgets/portal_pending_nav.dart';
+import '../../widgets/portal_scaffold_helpers.dart';
 
 const Color _kBrandDark = Color(0xFF232F3E);
 const Color _kDrawerCanvas = Color(0xFFE8EDF5);
@@ -38,7 +42,10 @@ class _RegionalManagerScaffoldState extends State<RegionalManagerScaffold> {
         (widget.showDrawer
             ? IconButton(
                 icon: const Icon(Icons.menu_rounded),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                onPressed: () {
+                  refreshPortalBadges(context);
+                  _scaffoldKey.currentState?.openDrawer();
+                },
                 tooltip: 'Menu',
               )
             : IconButton(
@@ -131,37 +138,13 @@ class _RegionalManagerDrawer extends StatelessWidget {
                   onNavigate: navigate,
                 ),
                 const SizedBox(height: PortalDrawerTheme.sectionSpacing),
-                PortalDrawerSectionCard(
-                  title: 'Inventory',
-                  primary: primary,
-                  items: const [
-                    PortalNavItem(
-                      icon: Icons.qr_code_2_rounded,
-                      label: 'IMEI register',
-                      route: '/regional-manager/imei-register',
-                    ),
-                    PortalNavItem(
-                      icon: Icons.swap_horiz_rounded,
-                      label: 'Transfer requests',
-                      route: '/regional-manager/transfers',
-                    ),
-                    PortalNavItem(
-                      icon: Icons.group_add_rounded,
-                      label: 'Assign to team leader',
-                      route: '/regional-manager/assign-team-leader',
-                    ),
-                    PortalNavItem(
-                      icon: Icons.undo_rounded,
-                      label: 'Return to admin',
-                      route: '/regional-manager/return-devices',
-                    ),
-                    PortalNavItem(
-                      icon: Icons.assignment_return_rounded,
-                      label: 'Return requests',
-                      route: '/regional-manager/return-requests',
-                    ),
-                  ],
-                  onNavigate: navigate,
+                Consumer<PendingRequestCountsProvider>(
+                  builder: (context, pending, _) => PortalDrawerSectionCard(
+                    title: 'Inventory',
+                    primary: primary,
+                    items: PortalPendingNav.regionalManagerInventoryItems(pending.counts),
+                    onNavigate: navigate,
+                  ),
                 ),
                 const SizedBox(height: PortalDrawerTheme.sectionSpacing),
                 PortalDrawerSectionCard(

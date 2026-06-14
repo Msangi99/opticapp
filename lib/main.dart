@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'api/client.dart';
 import 'theme/app_theme.dart';
 import 'providers/notifications_provider.dart';
+import 'providers/pending_request_counts_provider.dart';
 import 'services/push_notification_service.dart';
 import 'screens/common/notifications_screen.dart';
 import 'screens/login_screen.dart';
@@ -98,6 +99,7 @@ import 'screens/guest/reset_password_screen.dart';
 import 'screens/guest/email_verification_screen.dart';
 import 'screens/guest/db_setup_screen.dart';
 import 'screens/agent/agent_profile_screen.dart';
+import 'widgets/portal_badge_lifecycle_refresher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -110,13 +112,25 @@ class OpticApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) {
-        final provider = NotificationsProvider();
-        PushNotificationService.bindProvider(provider);
-        return provider;
-      },
-      child: MaterialApp(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) {
+            final provider = NotificationsProvider();
+            PushNotificationService.bindProvider(provider);
+            return provider;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final provider = PendingRequestCountsProvider();
+            PushNotificationService.bindPendingCountsProvider(provider);
+            return provider;
+          },
+        ),
+      ],
+      child: PortalBadgeLifecycleRefresher(
+        child: MaterialApp(
       navigatorKey: appNavigatorKey,
       title: 'Optic',
       theme: appThemeLight,
@@ -257,7 +271,8 @@ class OpticApp extends StatelessWidget {
         '/home': (context) => const _PlaceholderHome(),
       },
       home: const _AuthChecker(),
-    ),
+      ),
+      ),
     );
   }
 }
@@ -295,6 +310,7 @@ class _AuthCheckerState extends State<_AuthChecker> {
       await PushNotificationService.syncTokenWithBackend();
       if (!mounted) return;
       context.read<NotificationsProvider>().refreshSilently();
+      context.read<PendingRequestCountsProvider>().refreshSilently();
       final role = user['role'] as String?;
       if (role == 'admin' || role == 'subadmin') {
         Navigator.pushReplacementNamed(context, '/admin/dashboard');

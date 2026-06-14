@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/client.dart';
 import '../../api/users_api.dart';
+import '../../providers/pending_request_counts_provider.dart';
 import '../../services/push_notification_service.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal_drawer.dart';
+import '../../widgets/portal_pending_nav.dart';
+import '../../widgets/portal_scaffold_helpers.dart';
 
 const Color _kBrandDark = Color(0xFF232F3E);
 const Color _kDrawerCanvas = Color(0xFFE8EDF5);
@@ -45,7 +49,10 @@ class _AdminScaffoldState extends State<AdminScaffold> {
         (widget.showDrawer
             ? IconButton(
                 icon: const Icon(Icons.menu_rounded),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                onPressed: () {
+                  refreshPortalBadges(context);
+                  _scaffoldKey.currentState?.openDrawer();
+                },
                 tooltip: 'Menu',
               )
             : IconButton(
@@ -196,26 +203,16 @@ class _AdminDrawerState extends State<_AdminDrawer> {
                   const SizedBox(height: PortalDrawerTheme.sectionSpacing),
                 ],
                 if (_canViewModule('stock') || _canViewModule('branches'))
-                  PortalDrawerCollapsibleSection(
-                    sectionTitle: 'Stock Management',
-                    groupIcon: Icons.inventory_2_rounded,
-                    groupLabel: 'Stock',
-                    primary: primary,
-                    initiallyExpanded: true,
-                    items: const [
-                      PortalNavItem(icon: Icons.inventory_2_rounded, label: 'Stocks', route: '/admin/stocks'),
-                      PortalNavItem(icon: Icons.qr_code_2_rounded, label: 'IMEI search', route: '/admin/imei-search'),
-                      PortalNavItem(icon: Icons.store_mall_directory_rounded, label: 'Branches', route: '/admin/branches'),
-                      PortalNavItem(icon: Icons.receipt_long_rounded, label: 'Purchases', route: '/admin/purchases'),
-                      PortalNavItem(icon: Icons.swap_horiz_rounded, label: 'Passthrough Sales', route: '/admin/passthrough'),
-                      PortalNavItem(icon: Icons.local_shipping_rounded, label: 'Distribution Sales', route: '/admin/stock/distribution'),
-                      PortalNavItem(icon: Icons.person_pin_circle_rounded, label: 'Agent Cash Sales', route: '/admin/stock/agent-sales'),
-                      PortalNavItem(icon: Icons.credit_card_rounded, label: 'Agent Credit Sales', route: '/admin/agent-credits'),
-                      PortalNavItem(icon: Icons.swap_horiz_rounded, label: 'Agent transfers', route: '/admin/stock/agent-transfers'),
-                      PortalNavItem(icon: Icons.assignment_return_rounded, label: 'Device returns', route: '/admin/stock/device-returns'),
-                      PortalNavItem(icon: Icons.alt_route_rounded, label: 'Branch transfer', route: '/admin/stock/branch-transfer'),
-                    ],
-                    onNavigate: navigate,
+                  Consumer<PendingRequestCountsProvider>(
+                    builder: (context, pending, _) => PortalDrawerCollapsibleSection(
+                      sectionTitle: 'Stock Management',
+                      groupIcon: Icons.inventory_2_rounded,
+                      groupLabel: 'Stock',
+                      primary: primary,
+                      initiallyExpanded: true,
+                      items: PortalPendingNav.adminStockItems(pending.counts),
+                      onNavigate: navigate,
+                    ),
                   ),
                 if (_canViewModule('stock') || _canViewModule('branches'))
                   const SizedBox(height: PortalDrawerTheme.sectionSpacing),
