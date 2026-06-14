@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'client.dart';
+import '../services/push_notification_service.dart';
 
 /// After login, point the app at the tenant vendor host (e.g. optic.opticedgeafrica.net/api).
 Future<void> _applyTenantApiBaseUrlIfNeeded(Map<String, dynamic> user) async {
