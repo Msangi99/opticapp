@@ -11,6 +11,28 @@ Future<void> _applyTenantApiBaseUrlIfNeeded(Map<String, dynamic> user) async {
   await setApiBaseUrlOverride(apiUrl);
 }
 
+/// End the session: revoke server token, clear local auth, and go to login.
+Future<void> performLogout() async {
+  final token = await getStoredToken();
+
+  try {
+    if (token != null) {
+      await apiPost('/logout', {}, token: token);
+    }
+  } catch (_) {}
+
+  try {
+    await PushNotificationService.unregisterFromBackend();
+  } catch (_) {}
+
+  await clearStoredAuth();
+
+  final navigator = appNavigatorKey.currentState;
+  if (navigator != null) {
+    navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+}
+
 Future<Map<String, dynamic>> login(String email, String password) async {
   final res = await apiPost('/login', {'email': email, 'password': password}, token: null);
   final data = jsonDecode(res.body) as Map<String, dynamic>;

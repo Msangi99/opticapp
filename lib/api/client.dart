@@ -56,6 +56,7 @@ Future<void> clearStoredAuth() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.remove('token');
   await prefs.remove('user');
+  await prefs.remove(_prefsKeyApiBaseUrlOverride);
 }
 
 Future<Map<String, dynamic>?> getStoredUser() async {

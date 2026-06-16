@@ -85,13 +85,33 @@ class _RegionalManagerAssignTeamLeaderScreenState extends State<RegionalManagerA
     }
   }
 
+  static String _normalizeImei(String raw) => raw.trim().replaceAll(RegExp(r'\s+'), '');
+
+  static String? _imeiFormatError(String raw) {
+    final normalized = _normalizeImei(raw);
+    if (normalized.isEmpty) return 'Enter an IMEI to scan or add.';
+    if (!RegExp(r'^\d+$').hasMatch(normalized)) {
+      return 'IMEI must contain digits only.';
+    }
+    if (normalized.length != 15) {
+      return 'IMEI must be exactly 15 digits (got ${normalized.length}).';
+    }
+    return null;
+  }
+
   Future<void> _tryAddImei(String raw) async {
     final pid = _productId;
     if (pid == null) {
       setState(() => _error = 'Select a product first.');
       return;
     }
-    final vr = await validateRegionalManagerAssignImei(productId: pid, imei: raw);
+    final formatError = _imeiFormatError(raw);
+    if (formatError != null) {
+      setState(() => _error = formatError);
+      return;
+    }
+    final normalized = _normalizeImei(raw);
+    final vr = await validateRegionalManagerAssignImei(productId: pid, imei: normalized);
     if (!mounted) return;
     if (!vr.ok || vr.productListId == null) {
       setState(() => _error = vr.message ?? 'Validation failed.');
@@ -107,6 +127,21 @@ class _RegionalManagerAssignTeamLeaderScreenState extends State<RegionalManagerA
       _selectedIds.add(vr.productListId!);
       _error = null;
     });
+    _manualImeiController.clear();
+  }
+
+  Widget _buildSubmitButton() {
+    return FilledButton(
+      onPressed: _submitting ? null : _submit,
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+      child: _submitting
+          ? const SizedBox(
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          : const Text('Send transfer request'),
+    );
   }
 
   Future<void> _scanImei() async {
@@ -222,6 +257,8 @@ class _RegionalManagerAssignTeamLeaderScreenState extends State<RegionalManagerA
                   ),
                   if (_productId != null) ...[
                     const SizedBox(height: 16),
+                    _buildSubmitButton(),
+                    const SizedBox(height: 16),
                     OutlinedButton.icon(
                       onPressed: _scanImei,
                       icon: const Icon(Icons.qr_code_scanner_rounded),
@@ -237,6 +274,7 @@ class _RegionalManagerAssignTeamLeaderScreenState extends State<RegionalManagerA
                               labelText: 'IMEI',
                               prefixIcon: Icon(Icons.dialpad_rounded),
                             ),
+                            keyboardType: TextInputType.number,
                             onSubmitted: (v) => _tryAddImei(v),
                           ),
                         ),
@@ -278,18 +316,6 @@ class _RegionalManagerAssignTeamLeaderScreenState extends State<RegionalManagerA
                       );
                     }),
                   ],
-                  const SizedBox(height: 20),
-                  FilledButton(
-                    onPressed: _submitting ? null : _submit,
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                    child: _submitting
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Send transfer request'),
-                  ),
                 ],
               ),
             ),

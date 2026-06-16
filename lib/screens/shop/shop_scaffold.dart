@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../api/client.dart';
-import '../../services/push_notification_service.dart';
+import '../../api/auth_api.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal_drawer.dart';
 
@@ -244,10 +243,7 @@ class _ShopScaffoldState extends State<ShopScaffold> {
             onProfile: () {},
             onLogout: () async {
               Navigator.pop(context);
-              await PushNotificationService.unregisterFromBackend();
-              await clearStoredAuth();
-              if (!context.mounted) return;
-              Navigator.pushReplacementNamed(context, '/login');
+              await performLogout();
             },
           ),
         ],

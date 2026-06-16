@@ -29,6 +29,11 @@ class _UserProfileContentState extends State<UserProfileContent> {
   bool _savingPassword = false;
   String? _error;
 
+  bool get _profileInformationEditable {
+    const readOnlyPrefixes = {'team-leader', 'regional-manager', 'agent'};
+    return !readOnlyPrefixes.contains(widget.rolePrefix);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -136,7 +141,9 @@ class _UserProfileContentState extends State<UserProfileContent> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Update your name and email, or change your password.',
+              _profileInformationEditable
+                  ? 'Update your name and email, or change your password.'
+                  : 'Your name and email are managed by an administrator. You can change your password below.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -150,6 +157,7 @@ class _UserProfileContentState extends State<UserProfileContent> {
             const SizedBox(height: 12),
             TextField(
               controller: _nameController,
+              readOnly: !_profileInformationEditable,
               decoration: const InputDecoration(
                 labelText: 'Name',
                 prefixIcon: Icon(Icons.person_outline_rounded),
@@ -159,6 +167,7 @@ class _UserProfileContentState extends State<UserProfileContent> {
             const SizedBox(height: 12),
             TextField(
               controller: _emailController,
+              readOnly: !_profileInformationEditable,
               decoration: const InputDecoration(
                 labelText: 'Email',
                 prefixIcon: Icon(Icons.email_outlined),
@@ -166,17 +175,19 @@ class _UserProfileContentState extends State<UserProfileContent> {
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.done,
             ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _savingProfile ? null : _saveProfile,
-              child: _savingProfile
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text('Save profile'),
-            ),
+            if (_profileInformationEditable) ...[
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _savingProfile ? null : _saveProfile,
+                child: _savingProfile
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Save profile'),
+              ),
+            ],
             const SizedBox(height: 28),
             Text('Password', style: sectionLabelStyle(context)),
             const SizedBox(height: 12),

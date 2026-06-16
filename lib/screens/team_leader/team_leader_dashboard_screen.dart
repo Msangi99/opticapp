@@ -73,6 +73,7 @@ class _TeamLeaderDashboardScreenState extends State<TeamLeaderDashboardScreen> {
                                 _buildPendingBanner(),
                               ],
                               const SizedBox(height: 24),
+                              _buildCustodyProducts(),
                               _buildProductTable(),
                               const SizedBox(height: 24),
                               _buildAgentsList(),
@@ -150,6 +151,7 @@ class _TeamLeaderDashboardScreenState extends State<TeamLeaderDashboardScreen> {
 
   Widget _buildStatsGrid() {
     final items = [
+      ('Device in hand', '${_stats['devices_in_hand_count'] ?? 0}'),
       ('Agents', '${_stats['agents_count'] ?? 0} (${_stats['active_agents'] ?? 0} active)'),
       ('Qty assigned', '${_stats['total_assigned'] ?? 0}'),
       ('Qty sold', '${_stats['total_sold'] ?? 0}'),
@@ -188,6 +190,38 @@ class _TeamLeaderDashboardScreenState extends State<TeamLeaderDashboardScreen> {
               color: Colors.amber.shade900,
             ),
       ),
+    );
+  }
+
+  Widget _buildCustodyProducts() {
+    final products = _data?['custody_product_stats'];
+    final list = products is List ? products : <dynamic>[];
+    if (list.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Devices in your custody',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: sectionCardDecoration(context),
+          child: Column(
+            children: list.map((raw) {
+              final p = raw as Map<String, dynamic>;
+              return ListTile(
+                title: Text(p['product_name'] as String? ?? '—'),
+                subtitle: Text('${p['device_count'] ?? 0} device(s) not yet assigned to an agent'),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 

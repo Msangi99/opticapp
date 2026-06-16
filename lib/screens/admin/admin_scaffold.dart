@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../api/auth_api.dart';
 import '../../api/client.dart';
 import '../../api/users_api.dart';
 import '../../providers/pending_request_counts_provider.dart';
-import '../../services/push_notification_service.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal_drawer.dart';
 import '../../widgets/portal_pending_nav.dart';
@@ -246,9 +246,6 @@ class _AdminDrawerState extends State<_AdminDrawer> {
 
   Future<void> _logout() async {
     Navigator.pop(context);
-    await PushNotificationService.unregisterFromBackend();
-    await clearStoredAuth();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
+    await performLogout();
   }
 }

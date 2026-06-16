@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../api/client.dart';
+import '../../api/auth_api.dart';
 import 'shop_scaffold.dart';
 
 class DealerPendingScreen extends StatelessWidget {
@@ -33,9 +33,7 @@ class DealerPendingScreen extends StatelessWidget {
               const SizedBox(height: 32),
               OutlinedButton(
                 onPressed: () async {
-                  await clearStoredAuth();
-                  if (!context.mounted) return;
-                  Navigator.pushReplacementNamed(context, '/login');
+                  await performLogout();
                 },
                 child: const Text('Back to sign in'),
               ),

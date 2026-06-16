@@ -188,7 +188,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
     final stats = _data?['stats'] as Map<String, dynamic>? ?? {};
     final totalAssigned = stats['total_assigned'] as int? ?? 0;
     final totalSold = stats['total_sold'] as int? ?? 0;
-    final totalRemaining = stats['total_remaining'] as int? ?? 0;
+    final devicesInHand = stats['devices_in_hand_count'] as int? ??
+        stats['total_remaining'] as int? ??
+        0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,8 +229,8 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> {
                   compact: true,
                   icon: Icons.pending_outlined,
                   iconColor: Colors.orange,
-                  label: 'Remaining',
-                  value: totalRemaining.toString(),
+                  label: 'Device in hand',
+                  value: devicesInHand.toString(),
                   onTap: () => _openInventorySheet(_InventoryKind.remaining)),
             ),
           ],

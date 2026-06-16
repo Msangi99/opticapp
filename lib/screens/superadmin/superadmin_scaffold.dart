@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../api/client.dart';
+import '../../api/auth_api.dart';
 import '../../widgets/portal_drawer.dart';
 
 const Color _kBrandDark = Color(0xFF232F3E);
@@ -141,9 +141,7 @@ class _SuperadminDrawer extends StatelessWidget {
             onProfile: () => navigate('/superadmin/profile'),
             onLogout: () async {
               Navigator.pop(context);
-              await clearStoredAuth();
-              if (!context.mounted) return;
-              Navigator.pushReplacementNamed(context, '/login');
+              await performLogout();
             },
           ),
         ],
