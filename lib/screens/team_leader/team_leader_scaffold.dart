@@ -137,6 +137,29 @@ class _TeamLeaderDrawer extends StatelessWidget {
                   onNavigate: navigate,
                 ),
                 const SizedBox(height: PortalDrawerTheme.sectionSpacing),
+                PortalDrawerSectionCard(
+                  title: 'Sales',
+                  primary: primary,
+                  items: const [
+                    PortalNavItem(
+                      icon: Icons.sell_rounded,
+                      label: 'Record sale',
+                      route: '/team-leader/sell',
+                    ),
+                    PortalNavItem(
+                      icon: Icons.credit_score_rounded,
+                      label: 'Credit sales',
+                      route: '/team-leader/credits',
+                    ),
+                    PortalNavItem(
+                      icon: Icons.person_search_rounded,
+                      label: 'Leads',
+                      route: '/team-leader/leads',
+                    ),
+                  ],
+                  onNavigate: navigate,
+                ),
+                const SizedBox(height: PortalDrawerTheme.sectionSpacing),
                 Consumer<PendingRequestCountsProvider>(
                   builder: (context, pending, _) => PortalDrawerSectionCard(
                     title: 'Inventory',

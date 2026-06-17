@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../api/agent_credits_api.dart';
+import '../../api/record_sale_api.dart';
 import '../admin/widgets/admin_page_ui.dart';
 import 'agent_scaffold.dart';
+import '../team_leader/team_leader_scaffold.dart';
 
 class AgentCreditDetailScreen extends StatefulWidget {
-  const AgentCreditDetailScreen({super.key});
+  const AgentCreditDetailScreen({super.key, this.apiPrefix = 'agent'});
+
+  final String apiPrefix;
+
+  bool get _isTeamLeader => apiPrefix == 'team-leader';
 
   @override
   State<AgentCreditDetailScreen> createState() => _AgentCreditDetailScreenState();
@@ -42,7 +47,7 @@ class _AgentCreditDetailScreenState extends State<AgentCreditDetailScreen> {
       _error = null;
     });
     try {
-      final data = await getAgentCreditDetail(id);
+      final data = await getRecordSaleCreditDetail(widget.apiPrefix, id);
       if (!mounted) return;
       setState(() {
         _detail = data;
@@ -62,9 +67,7 @@ class _AgentCreditDetailScreenState extends State<AgentCreditDetailScreen> {
     final d = _detail ?? {};
     final payments = (d['payments'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
 
-    return AgentScaffold(
-      title: 'Credit detail',
-      body: _loading
+    final content = _loading
           ? const AdminPageLoading()
           : _error != null
               ? AdminPageError(message: _error!)
@@ -114,7 +117,12 @@ class _AgentCreditDetailScreenState extends State<AgentCreditDetailScreen> {
                         ),
                       ),
                   ],
-                ),
-    );
+                );
+
+    if (widget._isTeamLeader) {
+      return TeamLeaderScaffold(title: 'Credit detail', body: content);
+    }
+
+    return AgentScaffold(title: 'Credit detail', body: content);
   }
 }

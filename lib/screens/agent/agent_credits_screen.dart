@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../api/record_sale_api.dart';
 import '../../api/agent_credits_api.dart';
 import '../../api/invoice_api.dart';
 import '../../api/payment_options_api.dart';
 import '../admin/widgets/admin_page_ui.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
+import '../team_leader/team_leader_scaffold.dart';
 
 double _asDouble(dynamic v) {
   if (v == null) return 0;
@@ -21,7 +23,13 @@ int? _asInt(dynamic v) {
 }
 
 class AgentCreditsScreen extends StatefulWidget {
-  const AgentCreditsScreen({super.key});
+  const AgentCreditsScreen({super.key, this.apiPrefix = 'agent'});
+
+  final String apiPrefix;
+
+  bool get _isTeamLeader => apiPrefix == 'team-leader';
+  String get _detailRoute =>
+      _isTeamLeader ? '/team-leader/credits/detail' : '/agent/credits/detail';
 
   @override
   State<AgentCreditsScreen> createState() => _AgentCreditsScreenState();
@@ -44,7 +52,7 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
       _error = null;
     });
     try {
-      final list = await getAgentCredits();
+      final list = await getRecordSaleCredits(widget.apiPrefix);
       if (!mounted) return;
       setState(() {
         _credits = list;
@@ -105,7 +113,8 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
     try {
       await downloadReceiptAndNotify(
         context,
-        endpoint: '/agent/credits/$id/invoice',
+        endpoint: credit['invoice_endpoint']?.toString() ??
+            '/${widget.apiPrefix}/credits/$id/invoice',
         fallbackFilename: 'agent-credit-invoice-$id.pdf',
       );
     } catch (e) {
@@ -123,10 +132,7 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AgentScaffold(
-      title: 'Credit sales',
-      showDrawer: true,
-      body: _loading
+    final body = _loading
           ? const AdminPageLoading()
           : _error != null
           ? AdminPageError(message: _error!)
@@ -175,7 +181,7 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                                 ? null
                                 : () => Navigator.pushNamed(
                                     context,
-                                    '/agent/credits/detail',
+                                    widget._detailRoute,
                                     arguments: {'id': id},
                                   ),
                             borderRadius: BorderRadius.circular(12),
@@ -347,7 +353,20 @@ class _AgentCreditsScreenState extends State<AgentCreditsScreen> {
                         );
                       },
                     ),
-            ),
+            );
+
+    if (widget._isTeamLeader) {
+      return TeamLeaderScaffold(
+        title: 'Credit sales',
+        showDrawer: true,
+        body: body,
+      );
+    }
+
+    return AgentScaffold(
+      title: 'Credit sales',
+      showDrawer: true,
+      body: body,
     );
   }
 }

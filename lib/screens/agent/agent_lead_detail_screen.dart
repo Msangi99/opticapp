@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../api/agent_catalog_api.dart';
+import '../../api/record_sale_api.dart';
 import '../admin/widgets/admin_page_ui.dart';
 import 'agent_scaffold.dart';
+import '../team_leader/team_leader_scaffold.dart';
 
 class AgentLeadDetailScreen extends StatefulWidget {
-  const AgentLeadDetailScreen({super.key});
+  const AgentLeadDetailScreen({super.key, this.apiPrefix = 'agent'});
+
+  final String apiPrefix;
+
+  bool get _isTeamLeader => apiPrefix == 'team-leader';
 
   @override
   State<AgentLeadDetailScreen> createState() => _AgentLeadDetailScreenState();
@@ -39,7 +44,7 @@ class _AgentLeadDetailScreenState extends State<AgentLeadDetailScreen> {
       _error = null;
     });
     try {
-      final data = await getAgentCustomerNeedDetail(id);
+      final data = await getRecordSaleCustomerNeedDetail(widget.apiPrefix, id);
       if (!mounted) return;
       setState(() {
         _detail = data;
@@ -57,9 +62,7 @@ class _AgentLeadDetailScreenState extends State<AgentLeadDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final d = _detail ?? {};
-    return AgentScaffold(
-      title: 'Lead detail',
-      body: _loading
+    final content = _loading
           ? const AdminPageLoading()
           : _error != null
               ? AdminPageError(message: _error!)
@@ -79,7 +82,12 @@ class _AgentLeadDetailScreenState extends State<AgentLeadDetailScreen> {
                       ),
                     ),
                   ],
-                ),
-    );
+                );
+
+    if (widget._isTeamLeader) {
+      return TeamLeaderScaffold(title: 'Lead detail', body: content);
+    }
+
+    return AgentScaffold(title: 'Lead detail', body: content);
   }
 }

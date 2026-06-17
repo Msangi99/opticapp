@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../../api/agent_catalog_api.dart';
-import '../../api/agent_dashboard_api.dart';
-import '../../api/product_list_api.dart';
+import '../../api/record_sale_api.dart';
 import '../../theme/app_theme.dart';
 import 'agent_scaffold.dart';
+import '../team_leader/team_leader_scaffold.dart';
 
 class SellScreen extends StatefulWidget {
-  const SellScreen({super.key});
+  const SellScreen({super.key, this.apiPrefix = 'agent'});
+
+  final String apiPrefix;
+
+  bool get _isTeamLeader => apiPrefix == 'team-leader';
 
   @override
   State<SellScreen> createState() => _SellScreenState();
@@ -67,7 +70,7 @@ class _SellScreenState extends State<SellScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _priceController.addListener(() => setState(() {}));
     _loadAvailableProducts();
     _loadCategoriesForNeed();
@@ -78,7 +81,7 @@ class _SellScreenState extends State<SellScreen>
   Future<void> _loadBranchesForLead() async {
     setState(() => _loadingBranches = true);
     try {
-      final list = await getAgentBranches();
+      final list = await getRecordSaleBranches(widget.apiPrefix);
       if (!mounted) return;
       setState(() {
         _branches = list;
@@ -96,7 +99,7 @@ class _SellScreenState extends State<SellScreen>
   Future<void> _loadSaleConfig() async {
     setState(() => _loadingConfig = true);
     try {
-      final config = await getAgentSaleConfig();
+      final config = await getRecordSaleConfig(widget.apiPrefix);
       if (!mounted) return;
       final rawChannels = config['regular_channels'];
       final rawWatu = config['watu_channel'];
@@ -123,7 +126,7 @@ class _SellScreenState extends State<SellScreen>
   Future<void> _loadCategoriesForNeed() async {
     setState(() => _loadingCatalog = true);
     try {
-      final list = await getAgentCategories();
+      final list = await getRecordSaleCategories(widget.apiPrefix);
       if (!mounted) return;
       setState(() {
         _categories = list;
@@ -146,7 +149,7 @@ class _SellScreenState extends State<SellScreen>
     });
     if (id == null) return;
     try {
-      final list = await getAgentProductsInCategory(id);
+      final list = await getRecordSaleProductsInCategory(widget.apiPrefix, id);
       if (!mounted) return;
       setState(() => _needProducts = list);
     } catch (_) {
@@ -181,7 +184,8 @@ class _SellScreenState extends State<SellScreen>
       _submittingNeed = true;
     });
     try {
-      await submitAgentCustomerNeed(
+      await submitRecordSaleCustomerNeed(
+        apiPrefix: widget.apiPrefix,
         categoryId: cid,
         productId: pid,
         customerName: name,
@@ -215,7 +219,7 @@ class _SellScreenState extends State<SellScreen>
       _loadingProducts = true;
     });
     try {
-      final products = await getAvailableProducts();
+      final products = await getRecordSaleAvailableProducts(widget.apiPrefix);
       if (!mounted) return;
       setState(() {
         final list = products.isNotEmpty ? products : <Map<String, dynamic>>[];
@@ -336,7 +340,7 @@ class _SellScreenState extends State<SellScreen>
       _error = null;
     });
     try {
-      final device = await getDeviceByImei(imei);
+      final device = await getRecordSaleDeviceByImei(widget.apiPrefix, imei);
       if (!mounted) return;
       setState(() {
         _device = device;
@@ -437,7 +441,8 @@ class _SellScreenState extends State<SellScreen>
     try {
       if (credit) {
         // Watu tab: backend auto-uses the admin-configured Watu default channel
-        await sellDeviceCredit(
+        await sellRecordSaleCredit(
+          apiPrefix: widget.apiPrefix,
           productListId: productListId,
           customerName: customer,
           sellingPrice: unitPrice,
@@ -452,28 +457,6 @@ class _SellScreenState extends State<SellScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Watu sale recorded.'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: successColor,
-          ),
-        );
-      } else {
-        await sellDevice(
-          productListId: productListId,
-          customerName: customer,
-          sellingPrice: unitPrice,
-          paymentOptionId: _selectedChannelId,
-        );
-        if (!mounted) return;
-        final channelName = _regularChannels
-            .where((c) => _parseIntId(c['id']) == _selectedChannelId)
-            .map((c) => c['name']?.toString() ?? '')
-            .firstOrNull;
-        final msg = channelName != null && channelName.isNotEmpty
-            ? 'Sale recorded via $channelName.'
-            : 'Sale recorded.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
             behavior: SnackBarBehavior.floating,
             backgroundColor: successColor,
           ),
@@ -525,58 +508,52 @@ class _SellScreenState extends State<SellScreen>
     final total = _totalAmount;
     final theme = Theme.of(context);
 
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildRecordSaleTabBar(context),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildScanSelectBlock(context, theme),
+                    const SizedBox(height: 16),
+                    _buildSaleForm(
+                      context: context,
+                      theme: theme,
+                      total: total,
+                      credit: true,
+                    ),
+                  ],
+                ),
+              ),
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: _buildNeededForm(context, theme),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (widget._isTeamLeader) {
+      return TeamLeaderScaffold(
+        title: 'Record Sale',
+        showDrawer: true,
+        body: body,
+      );
+    }
+
     return AgentScaffold(
       title: 'Record Sale',
       showDrawer: true,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildRecordSaleTabBar(context),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildScanSelectBlock(context, theme),
-                      const SizedBox(height: 16),
-                      _buildSaleForm(
-                        context: context,
-                        theme: theme,
-                        total: total,
-                        credit: false,
-                      ),
-                    ],
-                  ),
-                ),
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildScanSelectBlock(context, theme),
-                      const SizedBox(height: 16),
-                      _buildSaleForm(
-                        context: context,
-                        theme: theme,
-                        total: total,
-                        credit: true,
-                      ),
-                    ],
-                  ),
-                ),
-                SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: _buildNeededForm(context, theme),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      body: body,
     );
   }
 
@@ -648,12 +625,6 @@ class _SellScreenState extends State<SellScreen>
               splashFactory: NoSplash.splashFactory,
               overlayColor: WidgetStateProperty.all(Colors.transparent),
               tabs: const [
-                Tab(
-                  child: _SaleTabChip(
-                    icon: Icons.point_of_sale_rounded,
-                    label: 'Cash sale',
-                  ),
-                ),
                 Tab(
                   child: _SaleTabChip(
                     icon: Icons.credit_card_rounded,

@@ -143,7 +143,6 @@ class _AgentDrawer extends StatelessWidget {
                   primary: primary,
                   items: const [
                     PortalNavItem(icon: Icons.sell_rounded, label: 'Record sale', route: '/agent/sell'),
-                    PortalNavItem(icon: Icons.receipt_long_rounded, label: 'Cash sales', route: '/agent/sales'),
                     PortalNavItem(icon: Icons.credit_score_rounded, label: 'Credit sales', route: '/agent/credits'),
                     PortalNavItem(icon: Icons.person_search_rounded, label: 'Leads', route: '/agent/leads'),
                   ],
