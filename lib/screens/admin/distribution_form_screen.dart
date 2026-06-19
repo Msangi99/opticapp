@@ -2,6 +2,30 @@ import 'package:flutter/material.dart';
 import '../../api/distribution_sales_api.dart';
 import 'admin_scaffold.dart';
 
+class _DistributionLine {
+  _DistributionLine({
+    required this.purchaseId,
+    required this.purchaseLabel,
+    required this.productId,
+    required this.productLabel,
+    required this.imeiIds,
+    required this.unitBuy,
+    required this.unitSell,
+  });
+
+  final int purchaseId;
+  final String purchaseLabel;
+  final int productId;
+  final String productLabel;
+  final List<int> imeiIds;
+  final double unitBuy;
+  final double unitSell;
+
+  String get lineKey => '$productId:$purchaseId';
+
+  double get lineTotal => imeiIds.length * unitSell;
+}
+
 class DistributionFormScreen extends StatefulWidget {
   const DistributionFormScreen({super.key, this.saleId});
 
@@ -21,6 +45,7 @@ class _DistributionFormScreenState extends State<DistributionFormScreen> {
   List<Map<String, dynamic>> _purchases = [];
   List<Map<String, dynamic>> _models = [];
   List<Map<String, dynamic>> _imeis = [];
+  final List<_DistributionLine> _saleLines = [];
 
   int? _purchaseId;
   int? _dealerId;
@@ -46,6 +71,24 @@ class _DistributionFormScreenState extends State<DistributionFormScreen> {
     _imeiRegister.dispose();
     super.dispose();
   }
+
+  String _purchaseLabel(int id) {
+    for (final p in _purchases) {
+      if (p['id'] == id) {
+        return p['name']?.toString() ?? 'Purchase #$id';
+      }
+    }
+    return 'Purchase #$id';
+  }
+
+  Map<String, dynamic>? _modelMeta(int productId) {
+    for (final m in _models) {
+      if (m['product_id'] == productId) return m;
+    }
+    return null;
+  }
+
+  double _grandTotal() => _saleLines.fold(0.0, (sum, line) => sum + line.lineTotal);
 
   Future<void> _load() async {
     try {
@@ -121,9 +164,54 @@ class _DistributionFormScreenState extends State<DistributionFormScreen> {
     }
   }
 
+  void _addLineToSale() {
+    if (_purchaseId == null || _productId == null || _selectedImeiIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select purchase, model, and at least one IMEI.')),
+      );
+      return;
+    }
+
+    final meta = _modelMeta(_productId!);
+    if (meta == null) return;
+
+    final lineKey = '${_productId!}:${_purchaseId!}';
+    final existingIndex = _saleLines.indexWhere((l) => l.lineKey == lineKey);
+    final buy = (meta['unit_price'] as num?)?.toDouble() ?? 0;
+    final sell = (meta['sell_price'] as num?)?.toDouble() ?? (meta['suggest'] as num?)?.toDouble() ?? buy;
+    final label = meta['label']?.toString() ?? 'Model #${_productId!}';
+
+    setState(() {
+      if (existingIndex >= 0) {
+        final existing = _saleLines[existingIndex];
+        final merged = {...existing.imeiIds, ..._selectedImeiIds}.toList();
+        _saleLines[existingIndex] = _DistributionLine(
+          purchaseId: _purchaseId!,
+          purchaseLabel: _purchaseLabel(_purchaseId!),
+          productId: _productId!,
+          productLabel: label,
+          imeiIds: merged,
+          unitBuy: buy,
+          unitSell: sell,
+        );
+      } else {
+        _saleLines.add(_DistributionLine(
+          purchaseId: _purchaseId!,
+          purchaseLabel: _purchaseLabel(_purchaseId!),
+          productId: _productId!,
+          productLabel: label,
+          imeiIds: _selectedImeiIds.toList(),
+          unitBuy: buy,
+          unitSell: sell,
+        ));
+      }
+      _selectedImeiIds.clear();
+    });
+  }
+
   Future<void> _save() async {
-    if (_purchaseId == null || _dealerId == null || _productId == null || _selectedImeiIds.isEmpty) {
-      setState(() => _error = 'Select purchase, dealer, model, and at least one IMEI.');
+    if (_dealerId == null || _saleLines.isEmpty) {
+      setState(() => _error = 'Select dealer and add at least one line to the sale.');
       return;
     }
     setState(() {
@@ -133,15 +221,15 @@ class _DistributionFormScreenState extends State<DistributionFormScreen> {
     try {
       final body = {
         'date': _date.text.trim(),
-        'purchase_id': _purchaseId,
         'dealer_id': _dealerId,
         if (_seller.text.trim().isNotEmpty) 'seller_name': _seller.text.trim(),
-        'lines': [
-          {
-            'product_id': _productId,
-            'product_list_ids': _selectedImeiIds.toList(),
-          },
-        ],
+        'lines': _saleLines
+            .map((line) => {
+                  'purchase_id': line.purchaseId,
+                  'product_id': line.productId,
+                  'product_list_ids': line.imeiIds,
+                })
+            .toList(),
         if (_paidAmount.text.trim().isNotEmpty) 'paid_amount': double.tryParse(_paidAmount.text.trim()),
       };
       if (widget.saleId == null) {
@@ -180,7 +268,10 @@ class _DistributionFormScreenState extends State<DistributionFormScreen> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
                     value: _purchaseId,
-                    decoration: const InputDecoration(labelText: 'Purchase', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Purchase (for next selection)',
+                      border: OutlineInputBorder(),
+                    ),
                     items: _purchases
                         .map((p) => DropdownMenuItem(value: p['id'] as int, child: Text(p['name']?.toString() ?? '')))
                         .toList(),
@@ -200,7 +291,10 @@ class _DistributionFormScreenState extends State<DistributionFormScreen> {
                     value: _productId,
                     decoration: const InputDecoration(labelText: 'Model', border: OutlineInputBorder()),
                     items: _models
-                        .map((m) => DropdownMenuItem(value: m['product_id'] as int, child: Text(m['picker_label']?.toString() ?? m['label']?.toString() ?? '')))
+                        .map((m) => DropdownMenuItem(
+                              value: m['product_id'] as int,
+                              child: Text(m['picker_label']?.toString() ?? m['label']?.toString() ?? ''),
+                            ))
                         .toList(),
                     onChanged: _onProductChanged,
                   ),
@@ -221,22 +315,62 @@ class _DistributionFormScreenState extends State<DistributionFormScreen> {
                     const SizedBox(height: 8),
                     ..._imeis.map((i) {
                       final id = i['id'] as int;
+                      final selectable = i['selectable'] != false;
                       final label = i['text']?.toString() ?? i['imei_number']?.toString() ?? '';
                       return CheckboxListTile(
                         value: _selectedImeiIds.contains(id),
-                        onChanged: (v) {
-                          setState(() {
-                            if (v == true) {
-                              _selectedImeiIds.add(id);
-                            } else {
-                              _selectedImeiIds.remove(id);
-                            }
-                          });
-                        },
+                        onChanged: selectable
+                            ? (v) {
+                                setState(() {
+                                  if (v == true) {
+                                    _selectedImeiIds.add(id);
+                                  } else {
+                                    _selectedImeiIds.remove(id);
+                                  }
+                                });
+                              }
+                            : null,
                         title: Text(label),
+                        subtitle: selectable ? null : Text(i['status_label']?.toString() ?? 'Not available'),
                         dense: true,
                       );
                     }),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.tonal(
+                        onPressed: _selectedImeiIds.isEmpty ? null : _addLineToSale,
+                        child: const Text('Add to sale'),
+                      ),
+                    ),
+                  ],
+                  if (_saleLines.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text('Sale lines', style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    ..._saleLines.asMap().entries.map((entry) {
+                      final line = entry.value;
+                      return Card(
+                        child: ListTile(
+                          title: Text(line.productLabel),
+                          subtitle: Text(
+                            '${line.purchaseLabel}\n'
+                            '${line.imeiIds.length} device(s) · '
+                            'Buy ${line.unitBuy.toStringAsFixed(0)} · '
+                            'Sell ${line.unitSell.toStringAsFixed(0)} · '
+                            'Total ${line.lineTotal.toStringAsFixed(0)} TZS',
+                          ),
+                          isThreeLine: true,
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => setState(() => _saleLines.removeAt(entry.key)),
+                          ),
+                        ),
+                      );
+                    }),
+                    Text(
+                      'Grand total: ${_grandTotal().toStringAsFixed(2)} TZS',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ],
                   const SizedBox(height: 12),
                   TextField(controller: _seller, decoration: const InputDecoration(labelText: 'Seller name (optional)', border: OutlineInputBorder())),
