@@ -15,13 +15,26 @@ String _normalizeApiBaseUrl(String url) {
   return s;
 }
 
+/// Tenant subdomains like optic-edge-africa.opticedgeafrica.net are no longer used.
+bool isLegacyTenantApiBaseUrl(String url) {
+  final uri = Uri.tryParse(_normalizeApiBaseUrl(url));
+  final host = uri?.host ?? '';
+  if (host.isEmpty || host == 'opticedgeafrica.net') return false;
+  return host.endsWith('.opticedgeafrica.net');
+}
+
 /// Resolved URL used for every request: saved override if non-empty, otherwise [kInternalApiBaseUrl].
 Future<String> resolveBaseUrl() async {
   final prefs = await SharedPreferences.getInstance();
   final raw = prefs.getString(_prefsKeyApiBaseUrlOverride);
   final trimmed = raw?.trim();
   if (trimmed == null || trimmed.isEmpty) return kInternalApiBaseUrl;
-  return _normalizeApiBaseUrl(trimmed);
+  final normalized = _normalizeApiBaseUrl(trimmed);
+  if (isLegacyTenantApiBaseUrl(normalized)) {
+    await prefs.remove(_prefsKeyApiBaseUrlOverride);
+    return kInternalApiBaseUrl;
+  }
+  return normalized;
 }
 
 /// Clears override when [url] is null or blank so [kInternalApiBaseUrl] is used.

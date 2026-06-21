@@ -2,13 +2,11 @@ import 'dart:convert';
 import 'client.dart';
 import '../services/push_notification_service.dart';
 
-/// After login, point the app at the tenant vendor host (e.g. optic.opticedgeafrica.net/api).
-Future<void> _applyTenantApiBaseUrlIfNeeded(Map<String, dynamic> user) async {
-  final apiUrl = user['api_base_url']?.toString().trim();
-  if (apiUrl == null || apiUrl.isEmpty) return;
-  final existing = await getApiBaseUrlOverride();
-  if (existing != null && existing.isNotEmpty) return;
-  await setApiBaseUrlOverride(apiUrl);
+/// Clears a saved tenant subdomain API URL so requests use [kInternalApiBaseUrl].
+Future<void> _clearLegacyTenantApiBaseUrlIfNeeded() async {
+  final override = await getApiBaseUrlOverride();
+  if (override == null || !isLegacyTenantApiBaseUrl(override)) return;
+  await setApiBaseUrlOverride(null);
 }
 
 /// End the session: revoke server token, clear local auth, and go to login.
@@ -41,11 +39,11 @@ Future<Map<String, dynamic>> login(String email, String password) async {
     throw Exception(msg.toString());
   }
   final token = data['token'] as String;
-  // Includes tenant_id, brand_name, and api_base_url when the user belongs to a vendor tenant.
+  // Includes tenant_id and brand_name when the user belongs to a vendor tenant.
   final user = data['user'] as Map<String, dynamic>;
   await setStoredToken(token);
   await setStoredUser(user);
-  await _applyTenantApiBaseUrlIfNeeded(user);
+  await _clearLegacyTenantApiBaseUrlIfNeeded();
   await PushNotificationService.syncTokenWithBackend();
   return user;
 }
