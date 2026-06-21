@@ -1,23 +1,65 @@
 import 'dart:convert';
 import 'client.dart';
 
-Future<List<Map<String, dynamic>>> getUsersByRole(String? role) async {
-  final query = role == null || role.isEmpty ? '' : '?role=$role';
+Future<List<Map<String, dynamic>>> getUsersByRole(
+  String? role, {
+  String? sort,
+  String? direction,
+}) async {
+  final params = <String, String>{};
+  if (role != null && role.isNotEmpty) params['role'] = role;
+  if (sort != null && sort.isNotEmpty) params['sort'] = sort;
+  if (direction != null && direction.isNotEmpty) params['direction'] = direction;
+  final query = params.isEmpty ? '' : '?${Uri(queryParameters: params).query}';
   final res = await apiGet('/admin/users$query');
   final data = jsonDecode(res.body) as Map<String, dynamic>?;
   if (res.statusCode != 200) throw Exception(data?['message']?.toString() ?? 'Failed to load users');
   final list = data?['data'];
   if (list == null || list is! List) return [];
-  return (list as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
+  return list.map((e) => e as Map<String, dynamic>).toList();
 }
 
-Future<List<Map<String, dynamic>>> getAllUsers() => getUsersByRole(null);
-Future<List<Map<String, dynamic>>> getCustomers() => getUsersByRole('customer');
-Future<List<Map<String, dynamic>>> getDealers() => getUsersByRole('dealer');
-Future<List<Map<String, dynamic>>> getAgents() => getUsersByRole('agent');
-Future<List<Map<String, dynamic>>> getTeamLeaders() => getUsersByRole('teamleader');
-Future<List<Map<String, dynamic>>> getRegionalManagers() => getUsersByRole('regional_manager');
-Future<List<Map<String, dynamic>>> getSubadmins() => getUsersByRole('subadmin');
+Future<List<Map<String, dynamic>>> getAllUsers({
+  String? sort,
+  String? direction,
+}) =>
+    getUsersByRole(null, sort: sort, direction: direction);
+
+Future<List<Map<String, dynamic>>> getCustomers({
+  String? sort,
+  String? direction,
+}) =>
+    getUsersByRole('customer', sort: sort, direction: direction);
+
+Future<List<Map<String, dynamic>>> getDealers({
+  String? sort,
+  String? direction,
+}) =>
+    getUsersByRole('dealer', sort: sort, direction: direction);
+
+Future<List<Map<String, dynamic>>> getAgents({
+  String? sort,
+  String? direction,
+}) =>
+    getUsersByRole('agent', sort: sort, direction: direction);
+
+Future<List<Map<String, dynamic>>> getTeamLeaders({
+  String? sort,
+  String? direction,
+}) =>
+    getUsersByRole('teamleader', sort: sort, direction: direction);
+
+Future<List<Map<String, dynamic>>> getRegionalManagers({
+  String? sort,
+  String? direction,
+}) =>
+    getUsersByRole('regional_manager', sort: sort, direction: direction);
+
+Future<List<Map<String, dynamic>>> getSubadmins({
+  String? sort,
+  String? direction,
+}) =>
+    getUsersByRole('subadmin', sort: sort, direction: direction);
 
 Future<Map<String, dynamic>> getUserDetail(int id) async {
   final res = await apiGet('/admin/users/$id');

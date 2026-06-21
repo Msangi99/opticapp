@@ -41,12 +41,23 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
   bool _loading = true;
   String? _error;
   String? _selectedRole;
+  late String _sort;
+  late String _direction;
 
   @override
   void initState() {
     super.initState();
     _selectedRole = widget.initialRole;
+    final defaults = defaultUserDirectorySort(_selectedRole);
+    _sort = defaults.sort;
+    _direction = defaults.direction;
     _load();
+  }
+
+  void _applyRoleDefaults(String? role) {
+    final defaults = defaultUserDirectorySort(role);
+    _sort = defaults.sort;
+    _direction = defaults.direction;
   }
 
   Future<void> _load() async {
@@ -55,7 +66,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
       _error = null;
     });
     try {
-      final list = await getUsersByRole(_selectedRole);
+      final list = await getUsersByRole(_selectedRole, sort: _sort, direction: _direction);
       if (!mounted) return;
       setState(() {
         _list = list;
@@ -291,13 +302,26 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
             tabs: _roleFilters,
             selectedRole: _selectedRole,
             onSelect: (role) {
-              setState(() => _selectedRole = role);
+              setState(() {
+                _selectedRole = role;
+                _applyRoleDefaults(role);
+              });
               _load();
             },
             onAdd: _openCreate,
             onAssign: _openAssignDevices,
           ),
-          const SizedBox(height: 12),
+          AdminUserSortBar(
+            sort: _sort,
+            direction: _direction,
+            onChanged: (option) {
+              setState(() {
+                _sort = option.sort;
+                _direction = option.direction;
+              });
+              _load();
+            },
+          ),
           Expanded(child: _buildBody()),
         ],
       ),

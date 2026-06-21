@@ -16,6 +16,8 @@ class _TeamLeadersScreenState extends State<TeamLeadersScreen> {
   List<Map<String, dynamic>> _list = [];
   bool _loading = true;
   String? _error;
+  String _sort = 'name';
+  String _direction = 'asc';
 
   Future<void> _load() async {
     setState(() {
@@ -23,7 +25,7 @@ class _TeamLeadersScreenState extends State<TeamLeadersScreen> {
       _error = null;
     });
     try {
-      final list = await getTeamLeaders();
+      final list = await getTeamLeaders(sort: _sort, direction: _direction);
       if (!mounted) return;
       setState(() {
         _list = list;
@@ -48,35 +50,58 @@ class _TeamLeadersScreenState extends State<TeamLeadersScreen> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       title: 'Team leaders',
-      body: _loading
-          ? const AdminPageLoading()
-          : _error != null
-              ? AdminPageError(message: _error!)
-              : _list.isEmpty
-                  ? const AdminPageEmpty(icon: Icons.groups_outlined, title: 'No team leaders yet')
-                  : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _list.length,
-                itemBuilder: (_, i) {
-                  final u = _list[i];
-                  final id = (u['id'] as num?)?.toInt();
-                  return AdminUserListTile(
-                    user: u,
-                    showRole: false,
-                    onTap: id == null
-                        ? null
-                        : () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => AdminUserDetailScreen(userId: id, role: 'teamleader'),
-                              ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AdminUsersPageHeader(
+            eyebrow: 'Staff',
+            title: 'Team leaders',
+            subtitle: 'Leaders tied to a branch and regional manager.',
+          ),
+          AdminUserSortBar(
+            sort: _sort,
+            direction: _direction,
+            onChanged: (option) {
+              setState(() {
+                _sort = option.sort;
+                _direction = option.direction;
+              });
+              _load();
+            },
+          ),
+          Expanded(
+            child: _loading
+                ? const AdminPageLoading()
+                : _error != null
+                    ? AdminPageError(message: _error!)
+                    : _list.isEmpty
+                        ? const AdminPageEmpty(icon: Icons.groups_outlined, title: 'No team leaders yet')
+                        : RefreshIndicator(
+                            onRefresh: _load,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _list.length,
+                              itemBuilder: (_, i) {
+                                final u = _list[i];
+                                final id = (u['id'] as num?)?.toInt();
+                                return AdminUserListTile(
+                                  user: u,
+                                  showRole: false,
+                                  onTap: id == null
+                                      ? null
+                                      : () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => AdminUserDetailScreen(userId: id, role: 'teamleader'),
+                                            ),
+                                          ),
+                                );
+                              },
                             ),
-                  );
-                },
-              ),
-            ),
+                          ),
+          ),
+        ],
+      ),
     );
   }
 }

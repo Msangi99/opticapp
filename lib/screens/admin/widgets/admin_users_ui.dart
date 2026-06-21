@@ -92,6 +92,114 @@ class UserRoleFilterTab {
   final String? assignRoute;
 }
 
+class UserDirectorySortOption {
+  const UserDirectorySortOption({
+    required this.sort,
+    required this.direction,
+    required this.label,
+  });
+
+  final String sort;
+  final String direction;
+  final String label;
+}
+
+const userDirectorySortOptions = [
+  UserDirectorySortOption(sort: 'name', direction: 'asc', label: 'Name (A–Z)'),
+  UserDirectorySortOption(sort: 'name', direction: 'desc', label: 'Name (Z–A)'),
+  UserDirectorySortOption(sort: 'email', direction: 'asc', label: 'Email (A–Z)'),
+  UserDirectorySortOption(sort: 'email', direction: 'desc', label: 'Email (Z–A)'),
+  UserDirectorySortOption(sort: 'created_at', direction: 'desc', label: 'Newest first'),
+  UserDirectorySortOption(sort: 'created_at', direction: 'asc', label: 'Oldest first'),
+  UserDirectorySortOption(sort: 'status', direction: 'asc', label: 'Status (A–Z)'),
+  UserDirectorySortOption(sort: 'status', direction: 'desc', label: 'Status (Z–A)'),
+];
+
+UserDirectorySortOption defaultUserDirectorySort(String? role) {
+  if (role == null || role.isEmpty) {
+    return userDirectorySortOptions[4];
+  }
+  if (['agent', 'teamleader', 'regional_manager', 'subadmin'].contains(role)) {
+    return userDirectorySortOptions[0];
+  }
+  if (role == 'dealer') {
+    return userDirectorySortOptions[4];
+  }
+  return userDirectorySortOptions[4];
+}
+
+UserDirectorySortOption userDirectorySortOptionFor(String sort, String direction) {
+  for (final option in userDirectorySortOptions) {
+    if (option.sort == sort && option.direction == direction) {
+      return option;
+    }
+  }
+  return userDirectorySortOptions[0];
+}
+
+class AdminUserSortBar extends StatelessWidget {
+  const AdminUserSortBar({
+    super.key,
+    required this.sort,
+    required this.direction,
+    required this.onChanged,
+  });
+
+  final String sort;
+  final String direction;
+  final ValueChanged<UserDirectorySortOption> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = userDirectorySortOptionFor(sort, direction);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.sort, size: 18, color: kAdminTextMuted),
+            const SizedBox(width: 8),
+            Text(
+              'Sort',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: kAdminTextMuted,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<UserDirectorySortOption>(
+                  isExpanded: true,
+                  value: selected,
+                  items: userDirectorySortOptions
+                      .map(
+                        (option) => DropdownMenuItem(
+                          value: option,
+                          child: Text(option.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (option) {
+                    if (option != null) onChanged(option);
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class AdminUserRoleFilterRow extends StatelessWidget {
   const AdminUserRoleFilterRow({
     super.key,
